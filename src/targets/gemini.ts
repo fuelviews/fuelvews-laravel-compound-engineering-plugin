@@ -1,5 +1,5 @@
 import path from "path"
-import { backupFile, copyDir, ensureDir, pathExists, readJson, writeJson, writeText } from "../utils/files"
+import { backupFile, copyDir, ensureDir, pathExists, readJson, resolveCommandPath, writeJson, writeText } from "../utils/files"
 import type { GeminiBundle } from "../types/gemini"
 
 export async function writeGeminiBundle(outputRoot: string, bundle: GeminiBundle): Promise<void> {
@@ -20,16 +20,8 @@ export async function writeGeminiBundle(outputRoot: string, bundle: GeminiBundle
 
   if (bundle.commands.length > 0) {
     for (const command of bundle.commands) {
-      // Split colon-separated names into nested directories (e.g. "ce:plan" -> "ce/plan.toml")
-      // to avoid colons in filenames which are invalid on Windows/NTFS
-      const parts = command.name.split(":")
-      if (parts.length > 1) {
-        const nestedDir = path.join(paths.commandsDir, ...parts.slice(0, -1))
-        await ensureDir(nestedDir)
-        await writeText(path.join(nestedDir, `${parts[parts.length - 1]}.toml`), command.content + "\n")
-      } else {
-        await writeText(path.join(paths.commandsDir, `${command.name}.toml`), command.content + "\n")
-      }
+      const dest = await resolveCommandPath(paths.commandsDir, command.name, ".toml")
+      await writeText(dest, command.content + "\n")
     }
   }
 

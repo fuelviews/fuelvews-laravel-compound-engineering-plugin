@@ -1,5 +1,5 @@
 import path from "path"
-import { copyDir, ensureDir, writeText } from "../utils/files"
+import { copyDir, ensureDir, resolveCommandPath, writeText } from "../utils/files"
 import type { DroidBundle } from "../types/droid"
 
 export async function writeDroidBundle(outputRoot: string, bundle: DroidBundle): Promise<void> {
@@ -9,16 +9,8 @@ export async function writeDroidBundle(outputRoot: string, bundle: DroidBundle):
   if (bundle.commands.length > 0) {
     await ensureDir(paths.commandsDir)
     for (const command of bundle.commands) {
-      // Split colon-separated names into nested directories (e.g. "ce:plan" -> "ce/plan.md")
-      // to avoid colons in filenames which are invalid on Windows/NTFS
-      const parts = command.name.split(":")
-      if (parts.length > 1) {
-        const nestedDir = path.join(paths.commandsDir, ...parts.slice(0, -1))
-        await ensureDir(nestedDir)
-        await writeText(path.join(nestedDir, `${parts[parts.length - 1]}.md`), command.content + "\n")
-      } else {
-        await writeText(path.join(paths.commandsDir, `${command.name}.md`), command.content + "\n")
-      }
+      const dest = await resolveCommandPath(paths.commandsDir, command.name, ".md")
+      await writeText(dest, command.content + "\n")
     }
   }
 
