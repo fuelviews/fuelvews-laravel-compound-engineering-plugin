@@ -38,6 +38,12 @@ async function makeFixtureRoot(): Promise<string> {
   await mkdir(path.join(root, "plugins", "coding-tutor", ".cursor-plugin"), {
     recursive: true,
   })
+  await mkdir(path.join(root, "plugins", "fuelviews-engineering", ".claude-plugin"), {
+    recursive: true,
+  })
+  await mkdir(path.join(root, "plugins", "fuelviews-engineering", ".cursor-plugin"), {
+    recursive: true,
+  })
   await mkdir(path.join(root, ".claude-plugin"), { recursive: true })
   await mkdir(path.join(root, ".cursor-plugin"), { recursive: true })
 
@@ -68,6 +74,18 @@ async function makeFixtureRoot(): Promise<string> {
   await writeFile(
     path.join(root, "plugins", "coding-tutor", ".cursor-plugin", "plugin.json"),
     JSON.stringify({ version: "1.2.1" }, null, 2),
+  )
+  await writeFile(
+    path.join(root, "plugins", "fuelviews-engineering", ".claude-plugin", "plugin.json"),
+    JSON.stringify({ version: "0.1.0", description: "old fv" }, null, 2),
+  )
+  await writeFile(
+    path.join(root, "plugins", "fuelviews-engineering", ".cursor-plugin", "plugin.json"),
+    JSON.stringify({ version: "0.1.0", description: "old fv" }, null, 2),
+  )
+  await writeFile(
+    path.join(root, "plugins", "fuelviews-engineering", ".mcp.json"),
+    JSON.stringify({ mcpServers: { context7: { command: "ctx7" } } }, null, 2),
   )
   await writeFile(
     path.join(root, ".claude-plugin", "marketplace.json"),

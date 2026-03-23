@@ -237,18 +237,18 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 
 ##### 1.0 Extend release infrastructure
 
-- [ ] Add `"fuelviews-engineering"` to `ReleaseComponent` union in `src/release/types.ts`
-- [ ] Add `getFuelviewsEngineeringCounts()` function (or generalize to `getPluginCounts(name)`) in `src/release/metadata.ts`
-- [ ] Add fv component routing and version loading in `src/release/components.ts` (`RELEASE_COMPONENTS`, `FILE_COMPONENT_MAP`, `SCOPES_TO_COMPONENTS`, `loadCurrentVersions()`)
-- [ ] Add fv paths to `syncReleaseMetadata()` in `scripts/release/validate.ts`
-- [ ] Add fv entries to `.github/release-please-config.json` and `.github/.release-please-manifest.json` when wiring the new release component
-- [ ] If the implementation branch lacks the root release-please config/manifests, create/reconcile them before relying on `bun run release:validate`
-- [ ] Validate every CE dependency fv calls directly, not only agents: agent namespaces plus the CE `git-worktree` manager script path and required subcommands / contract
-- [ ] Add cross-plugin agent reference validation: parse fv SKILL.md files for `compound-engineering:*` references and verify each resolves to an actual agent file under `plugins/compound-engineering/agents/`
-- [ ] Add target-aware CE dependency validation coverage for both repo/dev mode and at least one converted target install surface
-- [ ] Add generic plugin content validation: YAML frontmatter format for agents, `name:` frontmatter for skills
-- [ ] Extend `tests/release-components.test.ts`, `tests/release-preview.test.ts`, and `tests/release-metadata.test.ts` for fv-specific component detection, previewing, and metadata drift
-- [ ] Verify `bun run release:validate` catches fv-specific issues (not just CE). Script must check both CE and fv independently, reporting per-plugin counts and drift. Drift in either plugin fails validation.
+- [x] Add `"fuelviews-engineering"` to `ReleaseComponent` union in `src/release/types.ts`
+- [x] Add `getFuelviewsEngineeringCounts()` function (or generalize to `getPluginCounts(name)`) in `src/release/metadata.ts`
+- [x] Add fv component routing and version loading in `src/release/components.ts` (`RELEASE_COMPONENTS`, `FILE_COMPONENT_MAP`, `SCOPES_TO_COMPONENTS`, `loadCurrentVersions()`)
+- [x] Add fv paths to `syncReleaseMetadata()` in `scripts/release/validate.ts`
+- [x] Add fv entries to `.github/release-please-config.json` and `.github/.release-please-manifest.json` when wiring the new release component
+- [x] If the implementation branch lacks the root release-please config/manifests, create/reconcile them before relying on `bun run release:validate`
+- [x] Validate every CE dependency fv calls directly, not only agents: agent namespaces plus the CE `git-worktree` manager script path and required subcommands / contract
+- [x] Add cross-plugin agent reference validation: parse fv SKILL.md files for `compound-engineering:*` references and verify each resolves to an actual agent file under `plugins/compound-engineering/agents/`
+- [x] Add target-aware CE dependency validation coverage for both repo/dev mode and at least one converted target install surface
+- [x] Add generic plugin content validation: YAML frontmatter format for agents, `name:` frontmatter for skills
+- [x] Extend `tests/release-components.test.ts`, `tests/release-preview.test.ts`, and `tests/release-metadata.test.ts` for fv-specific component detection, previewing, and metadata drift
+- [x] Verify `bun run release:validate` catches fv-specific issues (not just CE). Script must check both CE and fv independently, reporting per-plugin counts and drift. Drift in either plugin fails validation.
 
 ### Research Insights (Phase 1.0)
 
@@ -264,41 +264,41 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 
 ##### 1.1 Plugin scaffold
 
-- [ ] Create `plugins/fuelviews-engineering/` directory structure
-- [ ] Create `.claude-plugin/plugin.json` manifest with `mcpServers` key (context7 + GitNexus MCP config)
-- [ ] Create `.cursor-plugin/plugin.json` manifest matching the existing repo plugin surfaces
-- [ ] Create `AGENTS.md` with fv-specific plugin development rules and skill naming convention
-- [ ] Create `CLAUDE.md` shim referencing AGENTS.md
-- [ ] Create `README.md` with component inventory (10 agents, 8 skills, 11 references, 6 templates)
-- [ ] Update `.claude-plugin/marketplace.json` to register fv plugin
-- [ ] Treat Cursor as fully in scope for this feature: if root `.cursor-plugin/marketplace.json` is absent on the implementation branch, create/reconcile it first, then register fv there as part of the same change set
-- [ ] Reconcile MASTER-PLAN.md: naming (`/fv-plan` -> `/fv:plan`), paths (`plans/active/` -> `docs/plans/`), frontmatter schema (`converged` -> removed, `excluded_improvements` -> `excluded_findings`, add `task_slug`/`locked_at`/`deepening` status), mark `/fv-compound` as deferred
-- [ ] Create `.mcp.json` at plugin root for MCP servers requiring API key headers (following CE's dual-file pattern)
-- [ ] Run `bun run release:validate` to verify registration (now validates fv too)
+- [x] Create `plugins/fuelviews-engineering/` directory structure
+- [x] Create `.claude-plugin/plugin.json` manifest with `mcpServers` key (context7 + GitNexus MCP config)
+- [x] Create `.cursor-plugin/plugin.json` manifest matching the existing repo plugin surfaces
+- [x] Create `AGENTS.md` with fv-specific plugin development rules and skill naming convention
+- [x] Create `CLAUDE.md` shim referencing AGENTS.md
+- [x] Create `README.md` with component inventory (10 agents, 8 skills, 11 references, 6 templates)
+- [x] Update `.claude-plugin/marketplace.json` to register fv plugin
+- [x] Treat Cursor as fully in scope for this feature: if root `.cursor-plugin/marketplace.json` is absent on the implementation branch, create/reconcile it first, then register fv there as part of the same change set
+- [x] Reconcile MASTER-PLAN.md: naming (`/fv-plan` -> `/fv:plan`), paths (`plans/active/` -> `docs/plans/`), frontmatter schema (`converged` -> removed, `excluded_improvements` -> `excluded_findings`, add `task_slug`/`locked_at`/`deepening` status), mark `/fv-compound` as deferred
+- [x] Create `.mcp.json` at plugin root for MCP servers requiring API key headers (following CE's dual-file pattern)
+- [x] Run `bun run release:validate` to verify registration (now validates fv too)
 
 ##### 1.2 Create new fv agents
 
-- [ ] `agents/review/php-reviewer.md`
-- [ ] `agents/review/laravel-reviewer.md`
-- [ ] `agents/review/blade-reviewer.md`
-- [ ] `agents/review/javascript-reviewer.md`
-- [ ] `agents/review/postgresql-reviewer.md`
-- [ ] `agents/review/laravel-conventions-reviewer.md` (loads spatie-laravel + laravel-best-practices refs)
-- [ ] `agents/review/laravel-codebase-health-reviewer.md` (covers dead/unused + DRY violations)
-- [ ] `agents/review/laravel-performance-reviewer.md` (Eloquent, caching, queues, Livewire rendering)
-- [ ] `agents/workflow/impact-assessment-agent.md`
-- [ ] `agents/workflow/synthesis-agent.md`
+- [x] `agents/review/php-reviewer.md`
+- [x] `agents/review/laravel-reviewer.md`
+- [x] `agents/review/blade-reviewer.md`
+- [x] `agents/review/javascript-reviewer.md`
+- [x] `agents/review/postgresql-reviewer.md`
+- [x] `agents/review/laravel-conventions-reviewer.md` (loads spatie-laravel + laravel-best-practices refs)
+- [x] `agents/review/laravel-codebase-health-reviewer.md` (covers dead/unused + DRY violations)
+- [x] `agents/review/laravel-performance-reviewer.md` (Eloquent, caching, queues, Livewire rendering)
+- [x] `agents/workflow/impact-assessment-agent.md`
+- [x] `agents/workflow/synthesis-agent.md`
 
 > **Implementation detail:** Full checklists with code examples for all 8 review agents are in Appendix A.3. These will be used directly when authoring agent .md files in Phase 1.2.
 
 ##### 1.3 Fetch and distill guidelines
 
-- [ ] Fetch https://spatie.be/guidelines/laravel -> `references/spatie-laravel.md`
-- [ ] Fetch https://spatie.be/guidelines/security -> `references/spatie-security.md`
-- [ ] Fetch https://spatie.be/guidelines/javascript -> `references/spatie-javascript.md`
-- [ ] Fetch https://spatie.be/guidelines/ai -> `references/spatie-ai.md`
-- [ ] Fetch https://github.com/alexeymezenin/laravel-best-practices -> `references/laravel-best-practices.md`
-- [ ] Each reference: under 500 lines, imperative voice, concrete code examples or anti-patterns for every rule
+- [x] Fetch https://spatie.be/guidelines/laravel -> `references/spatie-laravel.md`
+- [x] Fetch https://spatie.be/guidelines/security -> `references/spatie-security.md`
+- [x] Fetch https://spatie.be/guidelines/javascript -> `references/spatie-javascript.md`
+- [x] Fetch https://spatie.be/guidelines/ai -> `references/spatie-ai.md`
+- [x] Fetch https://github.com/alexeymezenin/laravel-best-practices -> `references/laravel-best-practices.md`
+- [x] Each reference: under 500 lines, imperative voice, concrete code examples or anti-patterns for every rule
 
 ### Research Insights (Phases 1.2-1.3)
 
@@ -314,43 +314,43 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 
 ##### 1.4 Create reference documents
 
-- [ ] `references/impact-depth-guide.md` - Impact assessment depth per round (0-4)
-- [ ] `references/convergence-rules.md` - Planning/review stop conditions, re-run conditions, max rounds
-- [ ] `references/convergent-planning-loop.md` - /fv:plan loop orchestration and context-budget handoff
-- [ ] `references/plan-finalization.md` - /fv:plan finalization, lock, and post-pipeline options
-- [ ] `references/severity-policy.md` - P1/P2/P3 definitions, exclusion handling, structural storage
-- [ ] `references/source-of-truth-order.md` - Canonical trust hierarchy (11 levels)
+- [x] `references/impact-depth-guide.md` - Impact assessment depth per round (0-4)
+- [x] `references/convergence-rules.md` - Planning/review stop conditions, re-run conditions, max rounds
+- [x] `references/convergent-planning-loop.md` - /fv:plan loop orchestration and context-budget handoff
+- [x] `references/plan-finalization.md` - /fv:plan finalization, lock, and post-pipeline options
+- [x] `references/severity-policy.md` - P1/P2/P3 definitions, exclusion handling, structural storage
+- [x] `references/source-of-truth-order.md` - Canonical trust hierarchy (11 levels)
 
 ##### 1.5 Create artifact templates
 
-- [ ] `templates/plan-artifact.md` - Plan frontmatter + section skeleton
-- [ ] `templates/impact-artifact.md` - Impact frontmatter + section skeleton
-- [ ] `templates/plan-index.md` - docs/plans/_index.md table format
-- [ ] `templates/current-work.md` - docs/ai/current-work.md format
-- [ ] `templates/handoff.md` - docs/handoffs/latest.md format
-- [ ] `templates/repo-layer/` - Full docs/ai/ scaffold (README, architecture, conventions, repo-map)
+- [x] `templates/plan-artifact.md` - Plan frontmatter + section skeleton
+- [x] `templates/impact-artifact.md` - Impact frontmatter + section skeleton
+- [x] `templates/plan-index.md` - docs/plans/_index.md table format
+- [x] `templates/current-work.md` - docs/ai/current-work.md format
+- [x] `templates/handoff.md` - docs/handoffs/latest.md format
+- [x] `templates/repo-layer/` - Full docs/ai/ scaffold (README, architecture, conventions, repo-map)
 
 ##### 1.6 Scaffold all 8 skill directories
 
-- [ ] `skills/fv-start-session/SKILL.md` (minimal shell, name: fv:start-session)
-- [ ] `skills/fv-plan/SKILL.md` (minimal shell, name: fv:plan -- includes deepening phases)
-- [ ] `skills/fv-impact/SKILL.md` (minimal shell, name: fv:impact)
-- [ ] `skills/fv-work/SKILL.md` (minimal shell, name: fv:work)
-- [ ] `skills/fv-review/SKILL.md` (minimal shell, name: fv:review)
-- [ ] `skills/fv-plan-sync/SKILL.md` (minimal shell, name: fv:plan-sync)
-- [ ] `skills/fv-close-task/SKILL.md` (minimal shell, name: fv:close-task)
-- [ ] `skills/fv-repo-catchup/SKILL.md` (minimal shell, name: fv:repo-catchup)
-- [ ] Each fv SKILL shell includes an explicit "Interaction Method" / equivalent section naming blocking question + task tool equivalents and the numbered-list fallback
-- [ ] Add a validation/test pass that checks fv SKILL shells for this cross-platform interaction guidance, not just frontmatter
+- [x] `skills/fv-start-session/SKILL.md` (minimal shell, name: fv:start-session)
+- [x] `skills/fv-plan/SKILL.md` (minimal shell, name: fv:plan -- includes deepening phases)
+- [x] `skills/fv-impact/SKILL.md` (minimal shell, name: fv:impact)
+- [x] `skills/fv-work/SKILL.md` (minimal shell, name: fv:work)
+- [x] `skills/fv-review/SKILL.md` (minimal shell, name: fv:review)
+- [x] `skills/fv-plan-sync/SKILL.md` (minimal shell, name: fv:plan-sync)
+- [x] `skills/fv-close-task/SKILL.md` (minimal shell, name: fv:close-task)
+- [x] `skills/fv-repo-catchup/SKILL.md` (minimal shell, name: fv:repo-catchup)
+- [x] Each fv SKILL shell includes an explicit "Interaction Method" / equivalent section naming blocking question + task tool equivalents and the numbered-list fallback
+- [x] Add a validation/test pass that checks fv SKILL shells for this cross-platform interaction guidance, not just frontmatter
 
 ##### 1.7 Baseline workflow infrastructure
 
-- [ ] Create `hooks/hooks.json` with the baseline close-task gate plus warn-first placeholders for session/review/plan-sync checks so Phase 2 skills depend on a real hook surface
-- [ ] Implement an fv-owned worktree wrapper / adapter entrypoint before Phase 2 so `/fv:plan`, `/fv:work`, and `/fv:close-task` can call a stable contract
-- [ ] Define a two-layer worktree contract: delegated CE verbs `create(taskSlug, branchType)`, `list()`, `switch(name)`, `copyEnv(name?)`, `cleanup()` plus wrapper-owned helpers like `active()`
-- [ ] Treat targeted `remove(name)` as optional wrapper-owned behavior for custom backends, not as a CE delegated verb
-- [ ] Validate the delegated CE script contract during fv validation (path exists, required delegated verbs available)
-- [ ] Support repo/dev mode and converted-target mode when resolving CE presence for the baseline dependency gate
+- [x] Create `hooks/hooks.json` with the baseline close-task gate plus warn-first placeholders for session/review/plan-sync checks so Phase 2 skills depend on a real hook surface
+- [x] Implement an fv-owned worktree wrapper / adapter entrypoint before Phase 2 so `/fv:plan`, `/fv:work`, and `/fv:close-task` can call a stable contract
+- [x] Define a two-layer worktree contract: delegated CE verbs `create(taskSlug, branchType)`, `list()`, `switch(name)`, `copyEnv(name?)`, `cleanup()` plus wrapper-owned helpers like `active()`
+- [x] Treat targeted `remove(name)` as optional wrapper-owned behavior for custom backends, not as a CE delegated verb
+- [x] Validate the delegated CE script contract during fv validation (path exists, required delegated verbs available)
+- [x] Support repo/dev mode and converted-target mode when resolving CE presence for the baseline dependency gate
 
 > **Implementation detail:** MCP config formats, all 13 hook events, hooks.json format, and release infrastructure extension steps are in Appendix A.4. Key learnings: routine PRs should NOT cut releases (docs/solutions/plugin-versioning-requirements.md), use `-beta` suffix for experimental skills (docs/solutions/skill-design/beta-skills-framework.md).
 
@@ -365,15 +365,15 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 **Token-budget guardrail:** For heavy scans such as `/fv:repo-catchup` plan classification or large impact deltas, use bundled scripts for file and frontmatter inventory generation and let the skill synthesize the output. This follows the repo's documented script-first pattern and keeps `fv:plan` and `fv:repo-catchup` within context limits.
 
 **Phase 1 success criteria:**
-- [ ] `bun run release:validate` passes
-- [ ] All 10 agents have valid YAML frontmatter
-- [ ] All 8 skills have valid SKILL.md with correct name: frontmatter
-- [ ] All 8 skills include enforced cross-platform interaction guidance (tool equivalents + numbered-list fallback)
-- [ ] Plugin appears in marketplace.json
-- [ ] Plugin appears in Cursor marketplace metadata too, with root Cursor marketplace surface created/reconciled if missing
-- [ ] References are under 500 lines each with concrete examples
-- [ ] Baseline hooks and worktree wrapper exist before Phase 2 skills depend on them
-- [ ] GitNexus MCP configured in plugin.json mcpServers
+- [x] `bun run release:validate` passes
+- [x] All 10 agents have valid YAML frontmatter
+- [x] All 8 skills have valid SKILL.md with correct name: frontmatter
+- [x] All 8 skills include enforced cross-platform interaction guidance (tool equivalents + numbered-list fallback)
+- [x] Plugin appears in marketplace.json
+- [x] Plugin appears in Cursor marketplace metadata too, with root Cursor marketplace surface created/reconciled if missing
+- [x] References are under 500 lines each with concrete examples
+- [x] Baseline hooks and worktree wrapper exist before Phase 2 skills depend on them
+- [x] GitNexus MCP configured in plugin.json mcpServers
 
 ---
 

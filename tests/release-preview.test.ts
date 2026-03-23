@@ -40,4 +40,17 @@ describe("release preview", () => {
 
     expect(preview.components).toHaveLength(0)
   })
+
+  test("fuelviews-engineering changes are isolated from other components", async () => {
+    const versions = await loadCurrentVersions()
+    const preview = await buildReleasePreview({
+      title: "feat(fuelviews): add php-reviewer agent",
+      files: ["plugins/fuelviews-engineering/agents/review/php-reviewer.md"],
+    })
+
+    expect(preview.components).toHaveLength(1)
+    expect(preview.components[0].component).toBe("fuelviews-engineering")
+    expect(preview.components[0].inferredBump).toBe("minor")
+    expect(preview.components[0].nextVersion).toBe(bumpVersion(versions["fuelviews-engineering"], "minor"))
+  })
 })

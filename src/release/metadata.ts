@@ -41,17 +41,22 @@ export type MetadataSyncResult = {
   updates: FileUpdate[]
 }
 
-export type CompoundEngineeringCounts = {
+export type PluginCounts = {
   agents: number
   skills: number
   mcpServers: number
 }
+
+export type CompoundEngineeringCounts = PluginCounts
 
 const COMPOUND_ENGINEERING_DESCRIPTION =
   "AI-powered development tools for code review, research, design, and workflow automation."
 
 const COMPOUND_ENGINEERING_MARKETPLACE_DESCRIPTION =
   "AI-powered development tools that get smarter with every use. Make each unit of engineering work easier than the last."
+
+const FUELVIEWS_ENGINEERING_DESCRIPTION =
+  "Laravel-focused engineering workflow with impact discovery, convergent review, and repo-layer truth. Requires compound-engineering plugin."
 
 function resolveExpectedVersion(
   explicitVersion: string | undefined,
@@ -121,6 +126,25 @@ export async function buildCompoundEngineeringMarketplaceDescription(_root: stri
   return COMPOUND_ENGINEERING_MARKETPLACE_DESCRIPTION
 }
 
+export async function getPluginCounts(root: string, pluginName: string): Promise<PluginCounts> {
+  const pluginRoot = path.join(root, "plugins", pluginName)
+  const [agents, skills, mcpServers] = await Promise.all([
+    countMarkdownFiles(path.join(pluginRoot, "agents")),
+    countSkillDirectories(path.join(pluginRoot, "skills")),
+    countMcpServers(pluginRoot),
+  ])
+
+  return { agents, skills, mcpServers }
+}
+
+export async function getFuelviewsEngineeringCounts(root: string): Promise<PluginCounts> {
+  return getPluginCounts(root, "fuelviews-engineering")
+}
+
+export async function buildFuelviewsEngineeringDescription(_root: string): Promise<string> {
+  return FUELVIEWS_ENGINEERING_DESCRIPTION
+}
+
 export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<MetadataSyncResult> {
   const root = options.root ?? process.cwd()
   const write = options.write ?? false
@@ -134,6 +158,8 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
   const compoundCursorPath = path.join(root, "plugins", "compound-engineering", ".cursor-plugin", "plugin.json")
   const codingTutorClaudePath = path.join(root, "plugins", "coding-tutor", ".claude-plugin", "plugin.json")
   const codingTutorCursorPath = path.join(root, "plugins", "coding-tutor", ".cursor-plugin", "plugin.json")
+  const fuelviewsClaudePath = path.join(root, "plugins", "fuelviews-engineering", ".claude-plugin", "plugin.json")
+  const fuelviewsCursorPath = path.join(root, "plugins", "fuelviews-engineering", ".cursor-plugin", "plugin.json")
   const marketplaceClaudePath = path.join(root, ".claude-plugin", "marketplace.json")
   const marketplaceCursorPath = path.join(root, ".cursor-plugin", "marketplace.json")
 
@@ -141,6 +167,8 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
   const compoundCursor = await readJson<CursorPluginManifest>(compoundCursorPath)
   const codingTutorClaude = await readJson<ClaudePluginManifest>(codingTutorClaudePath)
   const codingTutorCursor = await readJson<CursorPluginManifest>(codingTutorCursorPath)
+  const fuelviewsClaude = await readJson<ClaudePluginManifest>(fuelviewsClaudePath)
+  const fuelviewsCursor = await readJson<CursorPluginManifest>(fuelviewsCursorPath)
   const marketplaceClaude = await readJson<MarketplaceManifest>(marketplaceClaudePath)
   const marketplaceCursor = await readJson<MarketplaceManifest>(marketplaceCursorPath)
   const expectedCompoundVersion = resolveExpectedVersion(
@@ -151,6 +179,11 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
     versions["coding-tutor"],
     codingTutorClaude.version,
   )
+  const expectedFuelviewsVersion = resolveExpectedVersion(
+    versions["fuelviews-engineering"],
+    fuelviewsClaude.version,
+  )
+  const fuelviewsDescription = await buildFuelviewsEngineeringDescription(root)
 
   let changed = false
   if (compoundClaude.version !== expectedCompoundVersion) {
@@ -191,6 +224,30 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
   }
   updates.push({ path: codingTutorCursorPath, changed })
   if (write && changed) await writeJson(codingTutorCursorPath, codingTutorCursor)
+
+  changed = false
+  if (fuelviewsClaude.version !== expectedFuelviewsVersion) {
+    fuelviewsClaude.version = expectedFuelviewsVersion
+    changed = true
+  }
+  if (fuelviewsClaude.description !== fuelviewsDescription) {
+    fuelviewsClaude.description = fuelviewsDescription
+    changed = true
+  }
+  updates.push({ path: fuelviewsClaudePath, changed })
+  if (write && changed) await writeJson(fuelviewsClaudePath, fuelviewsClaude)
+
+  changed = false
+  if (fuelviewsCursor.version !== expectedFuelviewsVersion) {
+    fuelviewsCursor.version = expectedFuelviewsVersion
+    changed = true
+  }
+  if (fuelviewsCursor.description !== fuelviewsDescription) {
+    fuelviewsCursor.description = fuelviewsDescription
+    changed = true
+  }
+  updates.push({ path: fuelviewsCursorPath, changed })
+  if (write && changed) await writeJson(fuelviewsCursorPath, fuelviewsCursor)
 
   changed = false
   if (versions.marketplace && marketplaceClaude.metadata.version !== versions.marketplace) {

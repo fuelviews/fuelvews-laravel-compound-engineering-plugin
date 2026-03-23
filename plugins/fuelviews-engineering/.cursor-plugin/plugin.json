@@ -1,0 +1,28 @@
+{
+  "name": "fuelviews-engineering",
+  "displayName": "Fuelviews Engineering",
+  "version": "0.1.0",
+  "description": "Laravel-focused engineering workflow with impact discovery, convergent review, and repo-layer truth. Requires compound-engineering plugin.",
+  "author": {
+    "name": "Joshua Mitchener",
+    "url": "https://github.com/fuelviews"
+  },
+  "homepage": "https://github.com/fuelviews/fuelvews-laravel-compound-engineering-plugin",
+  "repository": "https://github.com/fuelviews/fuelvews-laravel-compound-engineering-plugin",
+  "license": "MIT",
+  "keywords": [
+    "cursor",
+    "plugin",
+    "laravel",
+    "php",
+    "livewire",
+    "filament",
+    "blade",
+    "postgresql",
+    "engineering-workflow",
+    "impact-discovery",
+    "convergent-review",
+    "code-review"
+  ],
+  "mcpServers": ".mcp.json"
+}

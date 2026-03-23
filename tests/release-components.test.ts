@@ -49,6 +49,21 @@ describe("release component detection", () => {
     expect(components.get("compound-engineering")).toEqual([])
     expect(components.get("coding-tutor")).toEqual([])
   })
+
+  test("maps fuelviews-engineering changes to the fuelviews-engineering component", () => {
+    const components = detectComponentsFromFiles([
+      "plugins/fuelviews-engineering/agents/review/php-reviewer.md",
+      "plugins/fuelviews-engineering/skills/fv-plan/SKILL.md",
+    ])
+
+    expect(components.get("fuelviews-engineering")).toEqual([
+      "plugins/fuelviews-engineering/agents/review/php-reviewer.md",
+      "plugins/fuelviews-engineering/skills/fv-plan/SKILL.md",
+    ])
+    expect(components.get("compound-engineering")).toEqual([])
+    expect(components.get("coding-tutor")).toEqual([])
+    expect(components.get("cli")).toEqual([])
+  })
 })
 
 describe("release intent parsing", () => {

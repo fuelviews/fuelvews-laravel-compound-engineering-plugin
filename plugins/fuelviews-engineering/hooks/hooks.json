@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "CLOSE-TASK GATE CHECK: If the current skill is fv:close-task, you MUST verify the following conditions before allowing the session to end. Read the active plan artifact's YAML frontmatter (the plan path is in docs/ai/current-work.md) and check:\n\n1. Plan frontmatter `status:` equals `synced`. If not synced, refuse to close and report the current status.\n2. No unresolved P1 findings exist. Scan the plan's `findings:` section (or linked review artifacts) for any P1-severity items without `resolution:` set. If unresolved P1s exist, list them and refuse to close.\n\nIf BOTH conditions pass, allow the close to proceed normally.\nIf EITHER condition fails, report the blocking reason(s) and instruct the user to resolve them before closing.\nIf the current skill is NOT fv:close-task, this check does not apply -- proceed normally."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "SESSION FRESHNESS CHECK (warn-first): Check whether docs/ai/fuelviews-engineering.local.md exists and whether an active plan is referenced in docs/ai/current-work.md. If either is missing or the plan artifact's last-modified date is more than 7 days old, emit a warning suggesting the user run fv:start-session or fv:repo-catchup to refresh context. Do not block the session -- warn only."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "WORKFLOW BOUNDARY CHECK (warn-first): If the current skill is fv:review or fv:plan-sync and a file write/edit just occurred, check whether the written file is a plan artifact, impact artifact, or handoff document. If so, verify that plan frontmatter status is consistent with the current workflow phase (e.g., fv:review should not write to a plan with status 'closed'; fv:plan-sync should only write when status is 'implementing' or 'synced'). Emit a warning if the status is inconsistent but do not block the operation."
+          }
+        ]
+      }
+    ]
+  }
+}

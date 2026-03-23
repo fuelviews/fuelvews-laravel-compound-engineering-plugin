@@ -12,6 +12,7 @@ const RELEASE_COMPONENTS: ReleaseComponent[] = [
   "cli",
   "compound-engineering",
   "coding-tutor",
+  "fuelviews-engineering",
   "marketplace",
   "cursor-marketplace",
 ]
@@ -30,6 +31,10 @@ const FILE_COMPONENT_MAP: Array<{ component: ReleaseComponent; prefixes: string[
     prefixes: ["plugins/coding-tutor/"],
   },
   {
+    component: "fuelviews-engineering",
+    prefixes: ["plugins/fuelviews-engineering/"],
+  },
+  {
     component: "marketplace",
     prefixes: [".claude-plugin/marketplace.json"],
   },
@@ -44,6 +49,8 @@ const SCOPES_TO_COMPONENTS: Record<string, ReleaseComponent> = {
   compound: "compound-engineering",
   "compound-engineering": "compound-engineering",
   "coding-tutor": "coding-tutor",
+  fuelviews: "fuelviews-engineering",
+  "fuelviews-engineering": "fuelviews-engineering",
   marketplace: "marketplace",
   "cursor-marketplace": "cursor-marketplace",
 }
@@ -184,6 +191,7 @@ export async function loadCurrentVersions(cwd = process.cwd()): Promise<VersionS
   const root = await readJson<RootPackageJson>(`${cwd}/package.json`)
   const ce = await readJson<PluginManifest>(`${cwd}/plugins/compound-engineering/.claude-plugin/plugin.json`)
   const codingTutor = await readJson<PluginManifest>(`${cwd}/plugins/coding-tutor/.claude-plugin/plugin.json`)
+  const fuelviews = await readJson<PluginManifest>(`${cwd}/plugins/fuelviews-engineering/.claude-plugin/plugin.json`)
   const marketplace = await readJson<MarketplaceManifest>(`${cwd}/.claude-plugin/marketplace.json`)
   const cursorMarketplace = await readJson<MarketplaceManifest>(`${cwd}/.cursor-plugin/marketplace.json`)
 
@@ -191,6 +199,7 @@ export async function loadCurrentVersions(cwd = process.cwd()): Promise<VersionS
     cli: root.version,
     "compound-engineering": ce.version,
     "coding-tutor": codingTutor.version,
+    "fuelviews-engineering": fuelviews.version,
     marketplace: marketplace.metadata.version,
     "cursor-marketplace": cursorMarketplace.metadata.version,
   }
