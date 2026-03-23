@@ -4,11 +4,11 @@ type: feat
 date: 2026-03-22
 origin: docs/brainstorms/2026-03-22-fuelviews-engineering-plugin-brainstorm.md
 master_plan: MASTER-PLAN.md
-review_round: 3
+review_round: 4
 review_findings_applied: true
 deepened: true
 deepened_date: 2026-03-22
-deepening_notes: "Added agent structural skeleton, impact tracing chain, convergent state machine, Laravel checklists, plugin architecture details. Full research in Appendix A."
+deepening_notes: "Added agent structural skeleton, impact tracing chain, convergent state machine, Laravel checklists, plugin architecture details, and round-4 contract fixes for resume state, doc verification ownership, and hydration ordering. Full research in Appendix A."
 ---
 
 # feat: Fuelviews Engineering Plugin
@@ -17,11 +17,11 @@ deepening_notes: "Added agent structural skeleton, impact tracing chain, converg
 
 Build the Fuelviews Engineering (fv) plugin as `plugins/fuelviews-engineering/` in this repo, forking Compound Engineering's workflow with stronger planning, convergent review, layered impact discovery, Laravel-specific quality checks, repo-layer truth, worktree isolation, and GitNexus knowledge graph integration.
 
-This plugin requires CE to be installed alongside it. fv owns its own skills and new agents but references CE's research, design, and workflow agents directly via the `compound-engineering:` namespace, avoiding duplication and maintenance drift.
+This plugin requires CE to be installed alongside it. fv owns its own skills and new agents but references CE's research, workflow, and selected review agents directly via the `compound-engineering:` namespace, avoiding duplication and maintenance drift.
 
 ## Problem Statement
 
-CE is a mature multi-agent workflow (29 agents, 43 skills) but lacks:
+CE is a mature multi-agent workflow but lacks:
 
 1. **Impact discovery** - No blast-radius tracking, no dependency tracing, no uncertainty classification
 2. **Convergent review** - No max-round limits, no stop conditions, no plan reconciliation per round
@@ -170,7 +170,10 @@ title: <task title>
 status: draft | in_review | deepening | locked | implementing | synced | closed
 canonical: true
 task_slug: <slug>
+pipeline_phase: 0
 review_rounds_completed: 0
+convergence_round: 0
+deepen_count: 0
 max_review_rounds: 4
 excluded_findings: []
 created_at: YYYY-MM-DD
@@ -178,7 +181,7 @@ locked_at: null
 ---
 ```
 
-**Frontmatter validation rules:** Status transitions must follow the lifecycle order (draft -> in_review -> deepening -> locked -> implementing -> synced -> closed). Skills must reject out-of-order transitions. `review_rounds_completed` must be integer 0-4. `task_slug` must match `^[a-z0-9][a-z0-9-]{0,78}[a-z0-9]$`. `excluded_findings` entries must include finding ID, author, timestamp, and reason.
+**Frontmatter validation rules:** Status transitions must follow the lifecycle order (draft -> in_review -> deepening -> locked -> implementing -> synced -> closed). Skills must reject out-of-order transitions. `pipeline_phase` must be integer 0-8 and match the canonical phase list in Phase 2.2. `review_rounds_completed` and `convergence_round` must be integers 0-4. `deepen_count` must be integer 0-2. `task_slug` must match `^[a-z0-9][a-z0-9-]{0,78}[a-z0-9]$`. `excluded_findings` entries must include finding ID, author, timestamp, and reason.
 
 Sections: task, goal, acceptance criteria, architecture decisions, implementation steps, test plan, risks, review deltas, impact references, deferred/excluded items.
 
@@ -321,7 +324,7 @@ The most complex skill. Includes deepening (no separate fv:deepen-plan skill). I
 >
 > **Key design points:** Max 4 review rounds. Max 2 deepen rounds. Stop on zero new P1/P2 findings. DEEPEN state triggers after round 1 (`round == 1 AND deepen_count < 2`), and optionally after round 2 if material new scope was discovered (`round == 2 AND deepen_count < 2 AND significant_new_scope`). Review focus labels (broad/interaction/system-wide/adversarial) describe reviewer scope, NOT impact depth levels (broad/plan-aware/deep-wiring/deep-legacy/contract-validation) -- these are separate scales.
 >
-> **Checkpoint/resume:** If context pressure exceeds threshold before all phases complete, checkpoint state to plan frontmatter (`last_completed_phase`, `convergence_round`) and instruct user to re-invoke `/fv:plan --resume`.
+> **Checkpoint/resume:** If context pressure exceeds threshold before all phases complete, checkpoint state to plan frontmatter (`pipeline_phase`, `review_rounds_completed`, `convergence_round`, `deepen_count`) and instruct user to re-invoke `/fv:plan --resume <plan-path>`.
 
 **--- Setup (Phases 0-1) ---**
 
@@ -368,7 +371,7 @@ The most complex skill. Includes deepening (no separate fv:deepen-plan skill). I
   - Compare alternate approaches
   - Explore hidden risk and simplification opportunities
   - Update plan with deepened sections
-- [ ] Track `deepen_count` in plan state (increment after each pass)
+- [ ] Track `deepen_count` and `pipeline_phase` in plan state (increment after each pass)
 - [ ] Deepen pass 2 is optional: triggers after round 2 if material new scope/domain entered
 
 **Phase 6: Review rounds 2-4 (convergent loop)**
@@ -379,7 +382,7 @@ The most complex skill. Includes deepening (no separate fv:deepen-plan skill). I
   - Check convergence: no new actionable P1-P3? Stop early
   - Check re-run conditions: material plan change, new domain/module, new side-effect path
   - Update plan incrementally
-- [ ] Track convergence state and `deepen_count` in plan frontmatter
+- [ ] Track `pipeline_phase`, `review_rounds_completed`, `convergence_round`, and `deepen_count` in plan frontmatter
 
 **--- Finalize (Phases 7-8) ---**
 
@@ -450,7 +453,8 @@ Fork CE's ce:work with fv additions:
 ##### 2.7 /fv:start-session
 
 - [ ] **Hard-fail if CE not detected**: Check for compound-engineering plugin presence (look for key CE agent files). If missing, emit blocking error: "fv requires the compound-engineering plugin." Do not proceed to any fv skill.
-- [ ] Read repo truth in source-of-truth order (all 11 levels, canonical path: `docs/plans/_index.md`)
+- [ ] Read repo truth in canonical source-of-truth order (all 11 levels, canonical path: `docs/plans/_index.md`)
+- [ ] After locating the active repo-layer context, hydrate repo-layer files using the Appendix A.7 subset order. This subset refines repo-layer reads only; it does not replace the canonical source-of-truth order.
 - [ ] Detect repo layer health (missing docs/ai/? Missing docs/plans/_index.md?)
 - [ ] Identify active task/plan if any
 - [ ] Check reference freshness (date-fetched timestamps on Spatie/best-practices refs)
@@ -483,6 +487,7 @@ Fork CE's ce:work with fv additions:
 - [ ] Infer likely current work
 - [ ] Identify risky legacy zones
 - [ ] Mark human-confirmation gaps (flag uncertainty, don't invent truth)
+- [ ] Run periodic repo-doc verification against code reality for `docs/ai/*` and `docs/plans/_index.md` as part of catch-up/refresh work. This owns doc verification; no separate `/fv:verify-docs` command is planned.
 - [ ] Detect Laravel: check for Boost, suggest if appropriate
 - [ ] Detect GitNexus: recommend if not present
 
@@ -502,6 +507,7 @@ Use CE's `ce:compound` skill directly (writes to docs/solutions/ with same forma
 - [ ] Synthesis-agent runs in both fv:plan and fv:review pipelines
 - [ ] fv:start-session hard-fails if CE plugin not detected
 - [ ] Frontmatter validation rejects out-of-order status transitions
+- [ ] All documented `/fv:*` entrypoints map to planned skills or explicitly documented modes of existing skills
 
 ---
 
@@ -637,7 +643,7 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | Custom worktree scripts | External | Phase 3a | No - fv works without worktrees |
 | Spatie guidelines | External | Fetch in Phase 1 | Yes - distilled into references |
 | alexeymezenin/laravel-best-practices | External | Fetch in Phase 1 | Yes - distilled into reference |
-| context7 MCP server | External | Via CE plugin | Yes - via CE dependency |
+| context7 MCP server | External | Configured in fv plugin Phase 1 | Yes - docs/research dependency |
 
 ## Risk Analysis & Mitigation
 
@@ -737,6 +743,9 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | 23 | Checkpoint/resume for context exhaustion via plan frontmatter state | Review round 3 |
 | 24 | Research insights extracted to appendix, plan body has pointers only | Review round 3 |
 | 25 | Deepen-plan runs up to 2 times max (mandatory after R1, optional after R2 if new scope) | User directive |
+| 26 | Canonical checkpoint state uses `pipeline_phase` plus round counters in plan frontmatter | Review round 4 |
+| 27 | Periodic docs verification belongs to `fv:repo-catchup`, not a standalone `/fv:verify-docs` command | Review round 4 |
+| 28 | Appendix A.7 hydration order is a repo-layer subset applied after canonical source-of-truth discovery | Review round 4 |
 
 ### Review History
 
@@ -758,6 +767,11 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 - Simplicity: 0 P1, 3 P2, 7 P3. "Converged and ready to implement."
 - Major changes: extracted research insights to appendix pointers, added DEEPEN state, fixed MCP config to dual-file pattern, updated minimum required agent set, added checkpoint/resume, clarified review vs impact depth labels, added validate behavior spec, moved external tools to Future
 - Convergence status: **CONVERGED**. All reviewers confirm ready to implement. No structural rework needed.
+
+**Round 4** (2026-03-22): workflows-review follow-up on the latest plan revision.
+- 1 P1, 3 P2 findings
+- Major changes: unified checkpoint/resume state on `pipeline_phase` + round counters, added `deepen_count` to the plan artifact schema, folded periodic doc verification into `fv:repo-catchup`, clarified that Appendix A.7 is a repo-layer hydration subset rather than a replacement for canonical source-of-truth order
+- Status: all findings accepted and applied
 
 ---
 
@@ -878,7 +892,7 @@ Research gathered during deepening pass. These will be consumed when authoring r
 
 **GATE pattern (from CE's LFG skill):** Insert explicit `GATE: STOP.` checkpoints between groups. Example: "GATE: Verify plan file exists on disk. If not, retry. Do NOT proceed."
 
-**Checkpoint/resume via frontmatter:** Every phase updates `pipeline_phase` in plan frontmatter. `--resume <plan-path>` reads this and jumps to correct phase. Phase mapping: 0-1 -> restart intake, 2 -> start review, 3 -> check impact, 4 -> start deepen, 5 -> start loop, 6 -> resume at `review_rounds_completed + 1`, 7 -> start lock, 8 -> present options.
+**Checkpoint/resume via frontmatter:** Every phase updates `pipeline_phase` in plan frontmatter. `--resume <plan-path>` reads `pipeline_phase`, `review_rounds_completed`, `convergence_round`, and `deepen_count`, then jumps to the correct phase. Phase mapping: 0-1 -> restart setup, 2 -> resume at Plan v1 generation, 3 -> resume at review round 1, 4 -> resume at impact assessment round 1, 5 -> resume at deepen pass, 6 -> resume at the convergent review loop using the stored round counters, 7 -> resume at finalized-plan contract-validation impact, 8 -> resume at plan lock and post-pipeline options.
 
 **Progressive summarization between rounds:** After each round, create compact summary (round N, new findings list, resolved, excluded, impact delta, confidence trend). Pass summary (not full agent output) to next round's agents.
 
@@ -904,7 +918,7 @@ Research gathered during deepening pass. These will be consumed when authoring r
 
 **handoff (latest.md):** Sections: What Was Accomplished, Commits Made, What Did NOT Work, Current State, Open Questions Carried Forward, Recommended Next Steps (ordered), Key Files to Read First. Critical content: decisions with rationale, failed approaches, specific file paths, ordered next steps.
 
-**Session hydration order for fv:start-session:**
+**Repo-layer hydration subset for fv:start-session (used only after the canonical source-of-truth scan identifies the active repo-layer context):**
 1. conventions.md (rules that constrain all behavior)
 2. architecture.md (structural decisions)
 3. repo-map.md (what exists and where)
@@ -916,7 +930,7 @@ Research gathered during deepening pass. These will be consumed when authoring r
 **Staleness detection (3 tiers):**
 - Tier 1 (passive): `Last verified` date. >14 days = WARNING, >30 days = BLOCKING, >60 days = STALE.
 - Tier 2 (active): Compare `git log -1 -- docs/ai/` vs `git log -1 -- app/ database/ routes/ config/`. If code changed more recently, docs may be stale.
-- Tier 3 (periodic): `/fv:verify-docs` cross-references doc claims against actual code (directories exist, model counts match, commands run).
+- Tier 3 (periodic): `fv:repo-catchup` verification pass cross-references doc claims against actual code (directories exist, model counts match, commands run). No standalone `/fv:verify-docs` command is planned.
 
 ### A.8 Legacy Repo Catch-Up Algorithms (Deepening Pass 2)
 
