@@ -893,7 +893,7 @@ Repomix (yamadashy/repomix) — Not strictly a grapher, but packs your entire re
 
 TL;DR recommendation: If you're using Claude Code day-to-day, go with GitNexus or code-review-graph. If you're doing AI software engineering research (SWE-bench style), RepoGraph is the most rigorous. If you just need quick codebase context for Claude.ai chat, Repomix is the simplest.
 
-When working on fuelviews repos/appss, our general git workflow, dev is the source of truth, worktrees, create conventional branch from dev, session/plan/work/etc/etc/etc, commit, push, pr into dev,
+When working on fuelviews repos/apps, our general git workflow, dev is the source of truth, worktrees, create conventional branch from dev, session/plan/work/etc/etc/etc, commit, push, pr into dev,
 squash merge, checkout to dev, pull, checkout to main, pull, git rebase dev, git push, checkout to dev. if there are github actions that need to work, let them complete, if there is a changelog updater
 workflow, let that complete post pr squash merge, and when you pull ensure it gets that update, if it doesnt, check if there is one and proceed based on info. Same workflow for packages, except you need
-to pr into main, and wait for checks + changelog there. Package forks, same workflows as package, except never commit or pr into the upstream repo or branchm always to the forked one..
+to pr into main, and wait for checks + changelog there. Package forks, same workflows as package, except never commit or pr into the upstream repo or branch always to the forked one..
