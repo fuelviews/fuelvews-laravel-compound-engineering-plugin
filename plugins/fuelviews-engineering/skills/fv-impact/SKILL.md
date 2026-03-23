@@ -32,14 +32,14 @@ When creating or updating tasks, use the platform's task tools:
 Determine the input type from the argument above. Exactly one of these applies:
 
 1. **No argument** -- Assess impact of the current git diff (unstaged + staged). Derive a slug from the current branch name. If the branch is `main` or `dev`, use `adhoc-impact` as the slug.
-2. **Task slug** (no path separators, no file extension) -- Look up `docs/plans/<slug>.plan.md` for plan context and `docs/plans/<slug>.impact.md` for prior impact. If neither exists, treat the slug as a label and assess the current diff.
-3. **Plan path** (ends in `.plan.md` or `.md` inside `docs/plans/`) -- Read the plan directly. Derive the slug from the filename by stripping date prefix, sequence number, and `-plan.md` suffix.
+2. **Task slug** (no path separators, no file extension) -- Search `docs/plans/` for a plan file containing the slug and `docs/impact/` for a matching impact file. If neither exists, treat the slug as a label and assess the current diff.
+3. **Plan path** (ends in `.md` inside `docs/plans/`) -- Read the plan directly. Derive the slug from the filename by stripping date prefix, type prefix, and `-plan.md` suffix.
 4. **File path** (any other path) -- Assess impact of changes to that specific file. Derive a slug from the filename.
 5. **Two paths separated by a comma or space** -- Enter comparison mode (Step 6).
 
 If the argument is ambiguous, ask the user which interpretation to use.
 
-Set `$SLUG`, `$PLAN_PATH` (if found), and `$PRIOR_IMPACT_PATH` (if `docs/plans/<slug>.impact.md` exists).
+Set `$SLUG`, `$PLAN_PATH` (if found), and `$PRIOR_IMPACT_PATH` (if `docs/impact/<slug>.md` exists).
 
 ## Step 2: Select Depth
 
@@ -60,6 +60,28 @@ Depth levels control how far the assessment traces dependencies. Reference: [imp
 "Select impact depth: (1) broad, (2) plan-aware, (3) deep-wiring, (4) deep-legacy, (5) contract-validation -- or press Enter for broad."
 
 Store the result as `$DEPTH`.
+
+## Step 2b: GitNexus Enhancement (if available)
+
+If `.gitnexus/` exists in the project root, GitNexus MCP tools supplement file-based tracing with graph-powered analysis. Use these capabilities alongside the standard assessment:
+
+- **`impact` tool** -- Run blast radius analysis at any depth on key symbols from the edit set. Produces depth-grouped dependency chains that file scanning alone cannot discover.
+- **`detect_changes` tool** -- When assessing the current git diff (no-argument mode or file path mode), use `detect_changes` to map the diff to affected processes. This reveals transitive effects beyond the immediate file changes.
+- **`context` tool** -- For each critical symbol (model, service, controller) in the edit set, request a 360-degree view showing all callers, callees, and process participation.
+- **`detect_impact` prompt** -- Use this guided workflow for pre-commit analysis. It produces scope, affected processes, and risk assessment in a structured format. This is the preferred entry point when GitNexus is available.
+- **`gitnexus://repo/{name}/processes` resource** -- Read the full execution flow inventory to identify which processes are affected by the change. Pass affected process names to the impact assessment agent for targeted tracing.
+
+If GitNexus is not available, fall back to file-based scanning and the standard dependency tracing chain in the impact assessment agent.
+
+## Step 2c: Boost Enhancement (if available)
+
+If Boost MCP tools are available (check for `laravel-boost` in `composer.json`), supplement impact analysis with live application data:
+
+- **`mcp__laravel-boost__database-schema`** -- Verify which tables and columns are affected by model changes. Cross-reference the edit set's Eloquent models against actual database structure to catch schema mismatches.
+- **`mcp__laravel-boost__application-info`** -- Get the full Eloquent model list for relationship tracing. This reveals models registered at runtime that file scanning may miss.
+- **`mcp__laravel-boost__database-query`** -- Check actual foreign key constraints, indexes, and referential integrity rules that affect blast radius for migration or model changes.
+
+If Boost is not available, fall back to file-based model and migration scanning for database impact assessment.
 
 ## Step 3: Gather Context
 
@@ -93,7 +115,7 @@ Wait for both to complete. Merge the codebase researcher's dependency findings i
 
 ### Impact artifact path
 
-- If a plan exists: write to `docs/plans/<slug>.impact.md`
+- If a plan exists: write to `docs/impact/<slug>.md`
 - If no plan exists: write to `.context/compound-engineering/fv-impact/<slug>-impact.md`
 
 Create parent directories as needed.

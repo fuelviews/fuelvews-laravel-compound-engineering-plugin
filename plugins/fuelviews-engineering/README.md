@@ -9,7 +9,7 @@ Laravel-focused engineering workflow with impact discovery, convergent review, l
 | Component | Count |
 |-----------|-------|
 | Agents | 10 |
-| Skills | 8 |
+| Skills | 9 |
 | References | 15 |
 | Templates | 6 |
 
@@ -47,6 +47,7 @@ Laravel-focused engineering workflow with impact discovery, convergent review, l
 | fv-plan-sync | fv:plan-sync | Reconcile plan artifacts against implementation reality |
 | fv-close-task | fv:close-task | Close task with blocking gates on unresolved P1s |
 | fv-repo-catchup | fv:repo-catchup | Normalize legacy repos with plan classification and doc refresh |
+| fv-brainstorm | fv:brainstorm | Explore requirements and approaches through collaborative dialogue before planning |
 
 ## References
 

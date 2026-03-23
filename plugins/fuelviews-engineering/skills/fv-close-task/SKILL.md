@@ -36,7 +36,7 @@ Create a task list for this closure operation with items for each step below. Up
 Determine which plan to close from the argument above. Exactly one of these applies:
 
 1. **Explicit path** (argument contains a file path) -- Read the plan artifact directly. Derive the task slug from the filename.
-2. **Task slug** (no path separators, no file extension) -- Look up `docs/plans/<slug>.plan.md`. If not found, report an error and stop.
+2. **Task slug** (no path separators, no file extension) -- Search `docs/plans/` for a file containing the slug (e.g., `docs/plans/*<slug>*.md`). If not found, report an error and stop.
 3. **No argument** -- Read `docs/ai/current-work.md` and extract the plan path from the `Plan:` field. If `current-work.md` does not exist or has no plan path, ask the user which plan to close.
 
 Set `$PLAN_PATH` and `$SLUG`. Read the plan file and parse its YAML frontmatter.
@@ -131,6 +131,10 @@ The hook operates independently -- it reads plan frontmatter on its own and does
 ## Step 3: Verification Checks
 
 These are non-blocking checks. Failures produce warnings but do not prevent closure.
+
+### Check 0: GitNexus Process Coverage (if available)
+
+If `.gitnexus/` exists in the project root, run `detect_changes` on the full branch diff (`$BASE_REF..HEAD`) to get the list of all affected processes. Compare the affected processes against the plan's impact artifact and implementation steps. Flag any process that appears in the impact but has no corresponding code change -- this indicates a gap where a known dependency was not addressed. If GitNexus is not available, fall back to the file-based checks below.
 
 ### Check 1: Plan Sync Completeness
 

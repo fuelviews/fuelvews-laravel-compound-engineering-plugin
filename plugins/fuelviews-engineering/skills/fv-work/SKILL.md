@@ -1,423 +1,497 @@
 ---
 name: fv:work
-description: Execute implementation from a locked plan with drift monitoring. Use when a plan is locked and ready for implementation.
-argument-hint: "[plan file path]"
+description: Execute work plans efficiently while maintaining quality and finishing features
+argument-hint: "[plan file, specification, or todo file path]"
 ---
 
-# Execute Implementation from a Locked Plan
+# Work Plan Execution Command
 
-## Interaction Method
+Execute a work plan efficiently while maintaining quality and finishing features.
 
-When this skill needs to ask the user a blocking question, use the platform's question tool:
+## Introduction
 
-- Claude Code: `AskUserQuestion`
-- Codex: `request_user_input`
-- Gemini: `ask_user`
-- Fallback: present numbered options and wait for user reply
-
-## Task Tracking
-
-When creating or updating tasks, use the platform's task tools:
-
-- Claude Code: `TaskCreate` / `TaskUpdate` / `TaskList`
-- Codex: `update_plan`
-- Fallback: maintain progress in structured text
-
-## Overview
-
-Implement a locked plan task-by-task with incremental commits, drift monitoring against the plan's impact artifact, and Laravel-specific quality gates. The plan must be in `locked` status before work begins. This skill forks CE's `ce:work` pattern and adds plan-awareness, impact monitoring, and fv Laravel review agents.
+This command takes a work document (plan, specification, or todo file) and executes it systematically. The focus is on **shipping complete features** by understanding requirements quickly, following existing patterns, and maintaining quality throughout.
 
 ## Input Document
 
 <input_document> #$ARGUMENTS </input_document>
 
+## Execution Workflow
+
+### Phase 1: Quick Start
+
+1. **Read Plan and Clarify**
+
+   - Read the work document completely
+   - Treat the plan as a decision artifact, not an execution script
+   - If the plan includes sections such as `Implementation Units`, `Work Breakdown`, `Requirements Trace`, `Files`, `Test Scenarios`, or `Verification`, use those as the primary source material for execution
+   - Check for `Execution note` on each implementation unit — these carry the plan's execution posture signal for that unit (for example, test-first or characterization-first). Note them when creating tasks.
+   - Check for a `Deferred to Implementation` or `Implementation-Time Unknowns` section — these are questions the planner intentionally left for you to resolve during execution. Note them before starting so they inform your approach rather than surprising you mid-task
+   - Check for a `Scope Boundaries` section — these are explicit non-goals. Refer back to them if implementation starts pulling you toward adjacent work
+   - Review any references or links provided in the plan
+   - If the user explicitly asks for TDD, test-first, or characterization-first execution in this session, honor that request even if the plan has no `Execution note`
+   - If the plan has an `impact_artifact:` frontmatter field, read the impact artifact from `docs/impact/`. Extract the definite edit set, watchlist, and blind spots for drift monitoring during execution.
+   - If anything is unclear or ambiguous, ask clarifying questions now
+   - Get user approval to proceed
+   - **Do not skip this** - better to ask questions now than build the wrong thing
+
+2. **Setup Environment**
+
+   First, check the current branch:
+
+   ```bash
+   current_branch=$(git branch --show-current)
+   default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+
+   # Fallback if remote HEAD isn't set
+   if [ -z "$default_branch" ]; then
+     default_branch=$(git rev-parse --verify origin/main >/dev/null 2>&1 && echo "main" || echo "master")
+   fi
+   ```
+
+   **If already on a feature branch** (not the default branch):
+   - Ask: "Continue working on `[current_branch]`, or create a new branch?"
+   - If continuing, proceed to step 3
+   - If creating new, follow Option A or B below
+
+   **If on the default branch**, choose how to proceed:
+
+   **Option A: Create a new branch**
+   ```bash
+   git pull origin [default_branch]
+   git checkout -b feature-branch-name
+   ```
+   Use a meaningful name based on the work (e.g., `feat/user-authentication`, `fix/email-validation`).
+
+   **Option B: Use a worktree (recommended for parallel development)**
+   ```bash
+   skill: git-worktree
+   # The skill will create a new branch from the default branch in an isolated worktree
+   ```
+
+   **Option C: Continue on the default branch**
+   - Requires explicit user confirmation
+   - Only proceed after user explicitly says "yes, commit to [default_branch]"
+   - Never commit directly to the default branch without explicit permission
+
+   **Recommendation**: Use worktree if:
+   - You want to work on multiple features simultaneously
+   - You want to keep the default branch clean while experimenting
+   - You plan to switch between branches frequently
+
+3. **Create Todo List**
+   - Use your available task tracking tool (e.g., TodoWrite, task lists) to break the plan into actionable tasks
+   - Derive tasks from the plan's implementation units, dependencies, files, test targets, and verification criteria
+   - Carry each unit's `Execution note` into the task when present
+   - For each unit, read the `Patterns to follow` field before implementing — these point to specific files or conventions to mirror
+   - Use each unit's `Verification` field as the primary "done" signal for that task
+   - Do not expect the plan to contain implementation code, micro-step TDD instructions, or exact shell commands
+   - Include dependencies between tasks
+   - Prioritize based on what needs to be done first
+   - Include testing and quality check tasks
+   - Keep tasks specific and completable
+
+4. **Choose Execution Strategy**
+
+   After creating the task list, decide how to execute based on the plan's size and dependency structure:
+
+   | Strategy | When to use |
+   |----------|-------------|
+   | **Inline** | 1-2 small tasks, or tasks needing user interaction mid-flight |
+   | **Serial subagents** | 3+ tasks with dependencies between them. Each subagent gets a fresh context window focused on one unit — prevents context degradation across many tasks |
+   | **Parallel subagents** | 3+ tasks where some units have no shared dependencies and touch non-overlapping files. Dispatch independent units simultaneously, run dependent units after their prerequisites complete |
+
+   **Subagent dispatch** uses your available subagent or task spawning mechanism. For each unit, give the subagent:
+   - The full plan file path (for overall context)
+   - The specific unit's Goal, Files, Approach, Execution note, Patterns, Test scenarios, and Verification
+   - Any resolved deferred questions relevant to that unit
+
+   After each subagent completes, update the plan checkboxes and task list before dispatching the next dependent unit.
+
+   For genuinely large plans needing persistent inter-agent communication (agents challenging each other's approaches, shared coordination across 10+ tasks), see Swarm Mode below which uses Agent Teams.
+
+### Phase 2: Execute
+
+1. **Task Execution Loop**
+
+   For each task in priority order:
+
+   ```
+   while (tasks remain):
+     - Mark task as in-progress
+     - Read any referenced files from the plan
+     - Look for similar patterns in codebase
+     - Implement following existing conventions
+     - Write tests for new functionality
+     - Run System-Wide Test Check (see below)
+     - Run tests after changes
+     - If Boost MCP tools are available, use `mcp__laravel-boost__last-error` and `mcp__laravel-boost__read-log-entries` when tests fail. Use `mcp__laravel-boost__database-schema` to verify migrations. Use `mcp__laravel-boost__search-docs` for framework documentation.
+     - Mark task as completed
+     - Evaluate for incremental commit (see below)
+   ```
+
+   When a unit carries an `Execution note`, honor it. For test-first units, write the failing test before implementation for that unit. For characterization-first units, capture existing behavior before changing it. For units without an `Execution note`, proceed pragmatically.
+
+   **Drift Monitoring** -- After each task, if an impact artifact was loaded, compare files touched against the definite edit set. Warn if files not in the impact are being modified. If `.gitnexus/` exists, run `detect_changes` to check for transitive effects.
+
+   Guardrails for execution posture:
+   - Do not write the test and implementation in the same step when working test-first
+   - Do not skip verifying that a new test fails before implementing the fix or feature
+   - Do not over-implement beyond the current behavior slice when working test-first
+   - Skip test-first discipline for trivial renames, pure configuration, and pure styling work
+
+   **System-Wide Test Check** — Before marking a task done, pause and ask:
+
+   | Question | What to do |
+   |----------|------------|
+   | **What fires when this runs?** Callbacks, middleware, observers, event handlers — trace two levels out from your change. | Read the actual code (not docs) for callbacks on models you touch, middleware in the request chain, `after_*` hooks. |
+   | **Do my tests exercise the real chain?** If every dependency is mocked, the test proves your logic works *in isolation* — it says nothing about the interaction. | Write at least one integration test that uses real objects through the full callback/middleware chain. No mocks for the layers that interact. |
+   | **Can failure leave orphaned state?** If your code persists state (DB row, cache, file) before calling an external service, what happens when the service fails? Does retry create duplicates? | Trace the failure path with real objects. If state is created before the risky call, test that failure cleans up or that retry is idempotent. |
+   | **What other interfaces expose this?** Mixins, DSLs, alternative entry points (Agent vs Chat vs ChatMethods). | Grep for the method/behavior in related classes. If parity is needed, add it now — not as a follow-up. |
+   | **Do error strategies align across layers?** Retry middleware + application fallback + framework error handling — do they conflict or create double execution? | List the specific error classes at each layer. Verify your rescue list matches what the lower layer actually raises. |
+
+   **When to skip:** Leaf-node changes with no callbacks, no state persistence, no parallel interfaces. If the change is purely additive (new helper method, new view partial), the check takes 10 seconds and the answer is "nothing fires, skip."
+
+   **When this matters most:** Any change that touches models with callbacks, error handling with fallback/retry, or functionality exposed through multiple interfaces.
+
+
+2. **Incremental Commits**
+
+   After completing each task, evaluate whether to create an incremental commit:
+
+   | Commit when... | Don't commit when... |
+   |----------------|---------------------|
+   | Logical unit complete (model, service, component) | Small part of a larger unit |
+   | Tests pass + meaningful progress | Tests failing |
+   | About to switch contexts (backend → frontend) | Purely scaffolding with no behavior |
+   | About to attempt risky/uncertain changes | Would need a "WIP" commit message |
+
+   **Heuristic:** "Can I write a commit message that describes a complete, valuable change? If yes, commit. If the message would be 'WIP' or 'partial X', wait."
+
+   If the plan has Implementation Units, use them as a starting guide for commit boundaries — but adapt based on what you find during implementation. A unit might need multiple commits if it's larger than expected, or small related units might land together. Use each unit's Goal to inform the commit message.
+
+   **Commit workflow:**
+   ```bash
+   # 1. Verify tests pass (use project's test command)
+   # Examples: bin/rails test, npm test, pytest, go test, etc.
+
+   # 2. Stage only files related to this logical unit (not `git add .`)
+   git add <files related to this logical unit>
+
+   # 3. Commit with conventional message
+   git commit -m "feat(scope): description of this unit"
+   ```
+
+   **Handling merge conflicts:** If conflicts arise during rebasing or merging, resolve them immediately. Incremental commits make conflict resolution easier since each commit is small and focused.
+
+   **Note:** Incremental commits use clean conventional messages without attribution footers. The final Phase 4 commit/PR includes the full attribution.
+
+3. **Follow Existing Patterns**
+
+   - The plan should reference similar code - read those files first
+   - Match naming conventions exactly
+   - Reuse existing components where possible
+   - Follow project coding standards (see AGENTS.md; use CLAUDE.md only if the repo still keeps a compatibility shim)
+   - When in doubt, grep for similar implementations
+
+4. **Test Continuously**
+
+   - Run relevant tests after each significant change
+   - Don't wait until the end to test
+   - Fix failures immediately
+   - Add new tests for new functionality
+   - **Unit tests with mocks prove logic in isolation. Integration tests with real objects prove the layers work together.** If your change touches callbacks, middleware, or error handling — you need both.
+
+5. **Simplify as You Go**
+
+   After completing a cluster of related implementation units (or every 2-3 units), review recently changed files for simplification opportunities — consolidate duplicated patterns, extract shared helpers, and improve code reuse and efficiency. This is especially valuable when using subagents, since each agent works with isolated context and can't see patterns emerging across units.
+
+   Don't simplify after every single unit — early patterns may look duplicated but diverge intentionally in later units. Wait for a natural phase boundary or when you notice accumulated complexity.
+
+   If a `/simplify` skill or equivalent is available, use it. Otherwise, review the changed files yourself for reuse and consolidation opportunities.
+
+6. **Figma Design Sync** (if applicable)
+
+   For UI work with Figma designs:
+
+   - Implement components following design specs
+   - Use figma-design-sync agent iteratively to compare
+   - Fix visual differences identified
+   - Repeat until implementation matches design
+
+6. **Track Progress**
+   - Keep the task list updated as you complete tasks
+   - Note any blockers or unexpected discoveries
+   - Create new tasks if scope expands
+   - Keep user informed of major milestones
+
+### Phase 3: Quality Check
+
+1. **Run Core Quality Checks**
+
+   Always run before submitting:
+
+   ```bash
+   # Run full test suite (use project's test command)
+   # Examples: bin/rails test, npm test, pytest, go test, etc.
+
+   # Run linting (per AGENTS.md)
+   # Use linting-agent before pushing to origin
+   ```
+
+2. **Consider Reviewer Agents** (Optional)
+
+   For Laravel projects, always run these fv review agents: `fuelviews-engineering:review:php-reviewer`, `fuelviews-engineering:review:laravel-reviewer`. Conditionally add: `fuelviews-engineering:review:blade-reviewer` (if Blade files changed), `fuelviews-engineering:review:postgresql-reviewer` (if migrations/queries changed), `fuelviews-engineering:review:javascript-reviewer` (if JS/Livewire changed).
+
+   Use for complex, risky, or large changes. Read agents from `fuelviews-engineering.local.md` frontmatter (`review_agents`). If no settings file, invoke the `setup` skill to create one.
+
+   Run configured agents in parallel with Task tool. Present findings and address critical issues.
+
+3. **Final Validation**
+   - All tasks marked completed
+   - All tests pass
+   - Linting passes
+   - Code follows existing patterns
+   - Figma designs match (if applicable)
+   - No console errors or warnings
+   - If the plan has a `Requirements Trace`, verify each requirement is satisfied by the completed work
+   - If any `Deferred to Implementation` questions were noted, confirm they were resolved during execution
+
+4. **Prepare Operational Validation Plan** (REQUIRED)
+   - Add a `## Post-Deploy Monitoring & Validation` section to the PR description for every change.
+   - Include concrete:
+     - Log queries/search terms
+     - Metrics or dashboards to watch
+     - Expected healthy signals
+     - Failure signals and rollback/mitigation trigger
+     - Validation window and owner
+   - If there is truly no production/runtime impact, still include the section with: `No additional operational monitoring required` and a one-line reason.
+
+### Phase 4: Ship It
+
+1. **Create Commit**
+
+   ```bash
+   git add .
+   git status  # Review what's being committed
+   git diff --staged  # Check the changes
+
+   # Commit with conventional format
+   git commit -m "$(cat <<'EOF'
+   feat(scope): description of what and why
+
+   Brief explanation if needed.
+
+   🤖 Generated with [MODEL] via [HARNESS](HARNESS_URL) + Compound Engineering v[VERSION]
+
+   Co-Authored-By: [MODEL] ([CONTEXT] context, [THINKING]) <noreply@anthropic.com>
+   EOF
+   )"
+   ```
+
+   **Fill in at commit/PR time:**
+
+   | Placeholder | Value | Example |
+   |-------------|-------|---------|
+   | Placeholder | Value | Example |
+   |-------------|-------|---------|
+   | `[MODEL]` | Model name | Claude Opus 4.6, GPT-5.4 |
+   | `[CONTEXT]` | Context window (if known) | 200K, 1M |
+   | `[THINKING]` | Thinking level (if known) | extended thinking |
+   | `[HARNESS]` | Tool running you | Claude Code, Codex, Gemini CLI |
+   | `[HARNESS_URL]` | Link to that tool | `https://claude.com/claude-code` |
+   | `[VERSION]` | `plugin.json` → `version` | 2.40.0 |
+
+   Subagents creating commits/PRs are equally responsible for accurate attribution.
+
+2. **Capture and Upload Screenshots for UI Changes** (REQUIRED for any UI work)
+
+   For **any** design changes, new views, or UI modifications, you MUST capture and upload screenshots:
+
+   **Step 1: Start dev server** (if not running)
+   ```bash
+   bin/dev  # Run in background
+   ```
+
+   **Step 2: Capture screenshots with agent-browser CLI**
+   ```bash
+   agent-browser open http://localhost:3000/[route]
+   agent-browser snapshot -i
+   agent-browser screenshot output.png
+   ```
+   See the `agent-browser` skill for detailed usage.
+
+   **Step 3: Upload using imgup skill**
+   ```bash
+   skill: imgup
+   # Then upload each screenshot:
+   imgup -h pixhost screenshot.png  # pixhost works without API key
+   # Alternative hosts: catbox, imagebin, beeimg
+   ```
+
+   **What to capture:**
+   - **New screens**: Screenshot of the new UI
+   - **Modified screens**: Before AND after screenshots
+   - **Design implementation**: Screenshot showing Figma design match
+
+   **IMPORTANT**: Always include uploaded image URLs in PR description. This provides visual context for reviewers and documents the change.
+
+3. **Create Pull Request**
+
+   ```bash
+   git push -u origin feature-branch-name
+
+   gh pr create --title "Feature: [Description]" --body "$(cat <<'EOF'
+   ## Summary
+   - What was built
+   - Why it was needed
+   - Key decisions made
+
+   ## Testing
+   - Tests added/modified
+   - Manual testing performed
+
+   ## Post-Deploy Monitoring & Validation
+   - **What to monitor/search**
+     - Logs:
+     - Metrics/Dashboards:
+   - **Validation checks (queries/commands)**
+     - `command or query here`
+   - **Expected healthy behavior**
+     - Expected signal(s)
+   - **Failure signal(s) / rollback trigger**
+     - Trigger + immediate action
+   - **Validation window & owner**
+     - Window:
+     - Owner:
+   - **If no operational impact**
+     - `No additional operational monitoring required: <reason>`
+
+   ## Before / After Screenshots
+   | Before | After |
+   |--------|-------|
+   | ![before](URL) | ![after](URL) |
+
+   ## Figma Design
+   [Link if applicable]
+
+   ---
+
+   [![Compound Engineering v[VERSION]](https://img.shields.io/badge/Compound_Engineering-v[VERSION]-6366f1)](https://github.com/EveryInc/compound-engineering-plugin)
+   🤖 Generated with [MODEL] ([CONTEXT] context, [THINKING]) via [HARNESS](HARNESS_URL)
+   EOF
+   )"
+   ```
+
+4. **Update Plan Status**
+
+   If the input document has YAML frontmatter with a `status` field, update it to `completed`:
+   ```
+   status: active  →  status: completed
+   ```
+
+5. **Notify User**
+   - Summarize what was completed
+   - Link to PR
+   - Note any follow-up work needed
+   - Suggest next steps if applicable
+
 ---
 
-## Phase 1: Quick Start
+## Swarm Mode with Agent Teams (Optional)
 
-### 1.1 Resolve Plan File
+For genuinely large plans where agents need to communicate with each other, challenge approaches, or coordinate across 10+ tasks with persistent specialized roles, use agent team capabilities if available (e.g., Agent Teams in Claude Code, multi-agent workflows in Codex).
 
-If `#$ARGUMENTS` is non-empty, treat it as the plan file path. Read the file completely.
+**Agent teams are typically experimental and require opt-in.** Do not attempt to use agent teams unless the user explicitly requests swarm mode or agent teams, and the platform supports it.
 
-If `#$ARGUMENTS` is empty, look for the active plan reference:
+### When to Use Agent Teams vs Subagents
 
-1. Read `docs/ai/current-work.md` in the target repo
-2. Extract the `plan_file` path from its frontmatter or body
-3. If no active plan is found, ask the user: "No active plan found. Provide a plan file path or run /fv:plan first."
+| Agent Teams | Subagents (standard mode) |
+|-------------|---------------------------|
+| Agents need to discuss and challenge each other's approaches | Each task is independent — only the result matters |
+| Persistent specialized roles (e.g., dedicated tester running continuously) | Workers report back and finish |
+| 10+ tasks with complex cross-cutting coordination | 3-8 tasks with clear dependency chains |
+| User explicitly requests "swarm mode" or "agent teams" | Default for most plans |
 
-### 1.2 Read the Plan
+Most plans should use subagent dispatch from standard mode. Agent teams add significant token cost and coordination overhead — use them when the inter-agent communication genuinely improves the outcome.
 
-- Read the plan file completely
-- Parse YAML frontmatter -- extract `status`, `task_slug`, `severity`, and `impact_artifact` fields
-- Read the plan's implementation steps, scope boundaries, deferred-to-implementation questions, and verification criteria
-- Check for `Execution note` on each implementation unit -- these carry the plan's execution posture signal (test-first, characterization-first, etc.)
+### Agent Teams Workflow
 
-### 1.3 Verify Locked Status
-
-Check the plan's `status` field in YAML frontmatter.
-
-- If `status: locked` -- proceed
-- If any other status -- hard-stop with: "Plan must be locked before implementation. Run /fv:plan first."
-- If no status field exists -- hard-stop with the same message
-
-### 1.4 Read Latest Impact Artifact
-
-Locate the latest impact artifact for this plan:
-
-1. Check the plan's `impact_artifact` frontmatter field for an explicit path
-2. If not present, scan `docs/ai/plans/<task-slug>/` for files matching `impact-*.md`
-3. Sort by timestamp descending, read the most recent one
-4. If no impact artifact exists, warn the user: "No impact artifact found. Drift monitoring will be limited. Continue anyway?" Proceed only on confirmation.
-
-Extract from the impact artifact:
-
-- **Definite edit set** -- files the plan expects to modify
-- **Probable edit set** -- files that may need changes
-- **Watchlist** -- files to monitor for unintended side effects
-- **Blind spots** -- areas the impact analysis could not fully assess
-
-### 1.5 Ask Clarifying Questions
-
-Review the plan for ambiguity. Check:
-
-- Deferred-to-implementation questions -- note them now so they inform the approach
-- Scope boundaries -- explicit non-goals to refer back to if implementation drifts
-- Any unclear requirements or conflicting instructions
-
-If anything is ambiguous, ask clarifying questions now. Get user approval to proceed before continuing. Better to ask now than build the wrong thing.
-
-### 1.6 Set Up Branch
-
-Check the current branch and determine how to proceed:
-
-```bash
-current_branch=$(git branch --show-current)
-default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
-if [ -z "$default_branch" ]; then
-  default_branch=$(git rev-parse --verify origin/main >/dev/null 2>&1 && echo "main" || echo "master")
-fi
-```
-
-**If already on a feature branch** (not the default branch):
-- Ask: "Continue working on `[current_branch]`, or create a new branch?"
-- If continuing, proceed to step 1.7
-
-**If on the default branch**, offer options:
-
-**Option A: Create a new branch**
-```bash
-git pull origin [default_branch]
-git checkout -b feature-branch-name
-```
-Use a meaningful name based on the plan (e.g., `feat/user-authentication`, `fix/email-validation`).
-
-**Option B: Use a worktree** (recommended for parallel development)
-```bash
-skill: git-worktree
-```
-
-**Option C: Continue on the default branch**
-- Requires explicit user confirmation
-- Never commit directly to the default branch without explicit permission
-
-### 1.7 Create Task List
-
-Break the plan's implementation steps into actionable tasks using the platform's task tracking tool.
-
-- Derive tasks from the plan's implementation units, dependencies, files, test targets, and verification criteria
-- Carry each unit's `Execution note` into the task when present
-- Note each unit's `Patterns to follow` field -- read those files before implementing
-- Use each unit's `Verification` field as the primary done signal
-- Include dependencies between tasks
-- Prioritize based on dependency order
-- Include testing tasks alongside implementation tasks
-
-### 1.8 Update Plan Status
-
-Update the plan file's YAML frontmatter:
-
-```
-status: locked  ->  status: implementing
-```
-
-Commit this status change:
-```bash
-git add <plan-file>
-git commit -m "chore(plan): mark plan as implementing"
-```
-
----
-
-## Phase 2: Execute
-
-### 2.1 Task Execution Loop
-
-For each task in priority order:
-
-```
-while tasks remain:
-  - Mark task as in_progress
-  - Read referenced files from the plan for this task
-  - Look for similar patterns in codebase using native file-search and content-search tools
-  - Implement following existing conventions and the plan's Patterns to follow
-  - Write tests for new functionality
-  - Run tests after changes
-  - Mark task as completed
-  - Check off corresponding item in plan file ([ ] -> [x])
-  - Run drift check (see 2.2)
-  - Evaluate for incremental commit (see 2.3)
-```
-
-When a unit carries an `Execution note`, honor it:
-- **Test-first**: write the failing test before implementation; verify the test fails before implementing the fix
-- **Characterization-first**: capture existing behavior before changing it
-- **No execution note**: proceed pragmatically
-
-Do not write the test and implementation in the same step when working test-first. Skip test-first discipline for trivial renames, pure configuration, and pure styling work.
-
-**System-Wide Test Check** -- Before marking a task done, pause and verify:
-
-| Question | Action |
-|----------|--------|
-| What fires when this runs? (observers, middleware, event listeners, model events) | Read the actual code for callbacks on models touched, middleware in the request chain, `after_*` hooks. Trace two levels out. |
-| Do tests exercise the real chain? | Write at least one integration test using real objects through the full callback/middleware chain. No mocks for interacting layers. |
-| Can failure leave orphaned state? (DB rows, cache entries, queued jobs) | Trace the failure path. If state is created before a risky call, test that failure cleans up or that retry is idempotent. |
-| What other interfaces expose this? (API routes, Livewire components, Artisan commands) | Use content-search to find the method/behavior in related classes. If parity is needed, add it now. |
-
-**When to skip**: Leaf-node changes with no callbacks, no state persistence, no parallel interfaces. Purely additive helpers and view partials need only a quick confirmation that nothing fires.
-
-### 2.2 Drift Monitoring
-
-After each completed task, compare actual changes against the plan's impact artifact:
-
-1. **Collect touched files** -- list all files modified since the last drift check (or since work started)
-2. **Compare against definite edit set** -- files in the definite set that were touched are expected; no action needed
-3. **Flag unexpected files** -- files touched that are NOT in the definite or probable edit sets:
-   - Warn: "File `[path]` was modified but is not in the plan's impact scope."
-   - If more than 2 unexpected files accumulate, escalate the warning
-4. **Check for new dependencies** -- if implementation introduces new composer packages, npm packages, or service bindings not anticipated by the plan:
-   - Update an impact delta note in `.context/compound-engineering/fv-work/impact-delta.md`
-5. **Scope expansion check** -- if any of these conditions are met:
-   - 3+ files outside the definite+probable edit sets have been touched
-   - A new migration was created that was not in the plan
-   - A new service provider or middleware was registered
-   - Then ask the user: "Scope expanding beyond plan. Options: (1) Continue -- scope is acceptable, (2) Run /fv:impact to reassess, (3) Pause and adjust plan manually."
-   - Proceed only after user decision
-
-### 2.3 Incremental Commits
-
-After completing each task, evaluate whether to commit:
-
-| Commit when... | Do not commit when... |
-|----------------|----------------------|
-| Logical unit complete (model, service, component) | Small part of a larger unit |
-| Tests pass and meaningful progress made | Tests failing |
-| About to switch contexts (backend to frontend) | Purely scaffolding with no behavior |
-| About to attempt risky or uncertain changes | Would need a "WIP" commit message |
-
-**Heuristic**: "Can I write a commit message that describes a complete, valuable change? If yes, commit."
-
-Commit workflow:
-```bash
-# 1. Verify tests pass (use project's test command -- e.g., php artisan test, ./vendor/bin/pest)
-
-# 2. Stage only files related to this logical unit
-git add <files related to this logical unit>
-
-# 3. Commit with conventional message
-git commit -m "feat(scope): description of this unit"
-```
-
-Use the plan's implementation unit Goal to inform the commit message. Use `feat:`, `fix:`, `refactor:`, or `test:` prefixes as appropriate.
-
-### 2.4 Follow Existing Patterns
-
-- Read files referenced in the plan's Patterns to follow before implementing each unit
-- Match naming conventions exactly
-- Reuse existing components, services, and repositories where possible
-- Follow project coding standards from AGENTS.md or CLAUDE.md
-- When in doubt, use content-search to find similar implementations
-
-### 2.5 Simplify as You Go
-
-After completing every 2-3 related tasks, review recently changed files for simplification:
-
-- Consolidate duplicated patterns
-- Extract shared helpers or traits
-- Improve code reuse
-
-Do not simplify after every single task -- early patterns may look duplicated but diverge intentionally in later units.
-
-### 2.6 Track Progress
-
-- Keep the task list updated as tasks complete
-- Note any blockers or unexpected discoveries
-- Create new tasks if scope expands (with user approval)
-- Keep user informed of major milestones
-
----
-
-## Phase 3: Quality Check
-
-### 3.1 Determine Review Panel
-
-Select fv Laravel review agents based on the types of files changed in this implementation. Use native file-search to categorize the diff.
-
-**Always dispatch (mandatory panel members):**
-
-- `fuelviews-engineering:review:php-reviewer` -- PSR-12, type safety, PHP conventions
-- `fuelviews-engineering:review:laravel-reviewer` -- Laravel architecture, service patterns, Eloquent usage
-
-**Conditionally dispatch based on changed file types:**
-
-| Condition | Agent |
-|-----------|-------|
-| Any `.blade.php` files changed | `fuelviews-engineering:review:blade-reviewer` |
-| Any `.js`, `.ts`, `.vue` files changed | `fuelviews-engineering:review:javascript-reviewer` |
-| Any migration files changed, or raw DB queries added | `fuelviews-engineering:review:postgresql-reviewer` |
-
-**Always dispatch (CE quality):**
-
-- `compound-engineering:review:code-simplicity-reviewer` -- check for unnecessary complexity
-
-Dispatch all selected agents in parallel using the platform's sub-agent or task mechanism. If parallel dispatch is unavailable, run them sequentially.
-
-### 3.2 Synthesize Review Findings
-
-After all review agents complete, dispatch:
-
-- `fuelviews-engineering:workflow:synthesis-agent` -- consolidate all review findings into a unified report with severity classifications (P1, P2, P3)
-
-### 3.3 Address Findings
-
-Triage the synthesized findings:
-
-- **P1 (blocking)**: Fix immediately before proceeding. These are correctness, security, or data-integrity issues.
-- **P2 (should fix)**: Fix in this PR unless the user explicitly defers them. These are maintainability or convention violations.
-- **P3 (advisory)**: Note for the user. Fix at their discretion.
-
-After fixing P1 and P2 issues, re-run affected review agents to confirm resolution. Do not loop more than twice -- if P1 findings persist after two fix rounds, ask the user how to proceed.
-
-### 3.4 Run Test Suite
-
-Run the full test suite for the target repo:
-
-```bash
-# Laravel projects
-php artisan test
-# or
-./vendor/bin/pest
-```
-
-If this repo also has `bun test` (for plugin/CLI changes in the compound-engineering repo itself):
-```bash
-bun test
-```
-
-All tests must pass before proceeding. Fix any failures introduced by the implementation.
-
-### 3.5 Final Validation
-
-Verify before shipping:
-
-- [ ] All tasks marked completed in the task list
-- [ ] All plan implementation steps checked off (`[x]`)
-- [ ] All tests pass
-- [ ] No P1 or P2 findings remaining
-- [ ] Code follows existing patterns and project conventions
-- [ ] Any deferred-to-implementation questions were resolved during execution
-- [ ] Scope boundaries from the plan were respected
-
----
-
-## Phase 4: Ship
-
-### 4.1 Stage and Commit Remaining Changes
-
-If any uncommitted work remains after the quality check and fixes:
-
-```bash
-git add <remaining files>
-git status
-git diff --staged
-git commit -m "feat(scope): final implementation with review fixes"
-```
-
-### 4.2 Push Branch
-
-```bash
-git push -u origin $(git branch --show-current)
-```
-
-### 4.3 Create Pull Request
-
-```bash
-gh pr create --title "feat(scope): description" --body "$(cat <<'EOF'
-## Summary
-
-- What was built
-- Key decisions made during implementation
-
-## Plan Reference
-
-- Plan file: `[plan file path]`
-- Task slug: `[task slug]`
-
-## Testing
-
-- Tests added/modified
-- Manual testing performed
-
-## Review Agent Findings
-
-- Summary of review agent findings and resolutions
-- Any P3 items deferred
-
-## Before / After Screenshots
-
-| Before | After |
-|--------|-------|
-| (include if UI changes) | (include if UI changes) |
-
-EOF
-)"
-```
-
-For UI changes, capture and upload before/after screenshots. Use the `agent-browser` skill if available to screenshot localhost routes, or ask the user to provide screenshots.
-
-### 4.4 Update Plan Status
-
-Keep the plan status as `implementing` -- do not advance to `synced` or `completed` yet. The plan-sync skill handles reconciliation.
-
-### 4.5 Clean Up Scratch Space
-
-Remove ephemeral work artifacts: `rm -rf .context/compound-engineering/fv-work/`. Do not remove if the user asked to inspect them or another skill still needs them.
-
-### 4.6 Suggest Next Steps
-
-Present the user with recommended follow-up:
-
-1. "Run /fv:plan-sync to reconcile plan artifacts with implementation reality."
-2. "Run /fv:review for a full convergent code review if not already satisfied with the quality gate results."
-3. If scope expanded: "Consider running /fv:impact to update the impact artifact for the expanded scope."
+1. **Create team** — use your available team creation mechanism
+2. **Create task list** — parse Implementation Units into tasks with dependency relationships
+3. **Spawn teammates** — assign specialized roles (implementer, tester, reviewer) based on the plan's needs. Give each teammate the plan file path and their specific task assignments
+4. **Coordinate** — the lead monitors task completion, reassigns work if someone gets stuck, and spawns additional workers as phases unblock
+5. **Cleanup** — shut down all teammates, then clean up the team resources
 
 ---
 
 ## Key Principles
 
-- **Plan is the source of truth** -- the locked plan defines what to build; drift is monitored and surfaced, not silently accepted
-- **Drift awareness over drift prevention** -- not all drift is bad; surface it early and let the user decide whether to accept or reassess
-- **Test continuously** -- run tests after each change, fix failures immediately; integration tests prove layers work together, unit tests prove logic in isolation
-- **Quality is built in** -- Laravel review agents catch framework-specific issues; P1 findings always block shipping
-- **Ship complete features** -- mark all tasks completed before moving on; a finished feature that ships beats a perfect feature that does not
+### Start Fast, Execute Faster
 
----
+- Get clarification once at the start, then execute
+- Don't wait for perfect understanding - ask questions and move
+- The goal is to **finish the feature**, not create perfect process
 
-## Common Pitfalls
+### The Plan is Your Guide
 
-- **Skipping plan verification** -- always confirm `locked` status; implementing against a draft plan causes rework
-- **Ignoring drift signals** -- unexpected file modifications often indicate scope creep; surface them early
-- **Deferring test failures** -- fix immediately; accumulated failures compound and obscure root causes
-- **Over-implementing beyond plan scope** -- check scope boundaries before adding "just one more thing"
-- **Skipping the impact artifact read** -- drift monitoring is only as good as its baseline; load the artifact first
-- **Running review agents on failing tests** -- fix tests first; review agents produce noise against broken code
+- Work documents should reference similar code and patterns
+- Load those references and follow them
+- Don't reinvent - match what exists
+
+### Test As You Go
+
+- Run tests after each change, not at the end
+- Fix failures immediately
+- Continuous testing prevents big surprises
+
+### Quality is Built In
+
+- Follow existing patterns
+- Write tests for new code
+- Run linting before pushing
+- Use reviewer agents for complex/risky changes only
+
+### Ship Complete Features
+
+- Mark all tasks completed before moving on
+- Don't leave features 80% done
+- A finished feature that ships beats a perfect feature that doesn't
+
+## Quality Checklist
+
+Before creating PR, verify:
+
+- [ ] All clarifying questions asked and answered
+- [ ] All tasks marked completed
+- [ ] Tests pass (run project's test command)
+- [ ] Linting passes (use linting-agent)
+- [ ] Code follows existing patterns
+- [ ] Figma designs match implementation (if applicable)
+- [ ] Before/after screenshots captured and uploaded (for UI changes)
+- [ ] Commit messages follow conventional format
+- [ ] PR description includes Post-Deploy Monitoring & Validation section (or explicit no-impact rationale)
+- [ ] PR description includes summary, testing notes, and screenshots
+- [ ] PR description includes Compound Engineered badge with accurate model, harness, and version
+
+## When to Use Reviewer Agents
+
+**Don't use by default.** Use reviewer agents only when:
+
+- Large refactor affecting many files (10+)
+- Security-sensitive changes (authentication, permissions, data access)
+- Performance-critical code paths
+- Complex algorithms or business logic
+- User explicitly requests thorough review
+
+For most features: tests + linting + following patterns is sufficient.
+
+## Common Pitfalls to Avoid
+
+- **Analysis paralysis** - Don't overthink, read the plan and execute
+- **Skipping clarifying questions** - Ask now, not after building wrong thing
+- **Ignoring plan references** - The plan has links for a reason
+- **Testing at the end** - Test continuously or suffer later
+- **Forgetting to track progress** - Update task status as you go or lose track of what's done
+- **80% done syndrome** - Finish the feature, don't move on early
+- **Over-reviewing simple changes** - Save reviewer agents for complex work

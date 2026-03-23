@@ -1,7 +1,7 @@
 ---
 name: fv:plan-sync
 description: Reconcile plan artifacts against implementation reality. Use after work/review cycles to sync plan state with actual code changes.
-argument-hint: "[plan file path]"
+argument-hint: "[plan file path | --all]"
 ---
 
 # Reconcile Plan Against Implementation
@@ -35,17 +35,142 @@ Create a task list for this sync operation with items for each step below. Updat
 
 Determine which plan to sync from the argument above. Exactly one of these applies:
 
-1. **Explicit path** (argument contains a file path) -- Read the plan artifact directly. Derive the task slug from the filename.
-2. **Task slug** (no path separators, no file extension) -- Look up `docs/plans/<slug>.plan.md`. If not found, report an error and stop.
-3. **No argument** -- Read `docs/ai/current-work.md` and extract the plan path from the `Plan:` field. If `current-work.md` does not exist or has no plan path, ask the user which plan to sync.
+1. **`--all` (batch mode)** -- Jump to **Step 1B: Batch Sync** below. Do NOT use the single-plan flow.
+2. **Explicit path** (argument contains a file path) -- Read the plan artifact directly. Derive the task slug from the filename. Proceed to Step 2.
+3. **Task slug** (no path separators, no file extension) -- Search `docs/plans/` for a file containing the slug (e.g., `docs/plans/*<slug>*.md`). If not found, report an error and stop. Proceed to Step 2.
+4. **No argument** -- Read `docs/ai/current-work.md` and extract the plan path from the `Plan:` field. If `current-work.md` does not exist or has no plan path, ask the user which plan to sync. Proceed to Step 2.
 
-Set `$PLAN_PATH` and `$SLUG`. Read the plan file and parse its YAML frontmatter.
+For options 2-4: Set `$PLAN_PATH` and `$SLUG`. Read the plan file and parse its YAML frontmatter.
 
-### Validation
+### Validation (single-plan mode)
 
 - The plan must exist and be readable.
-- The plan frontmatter `status:` must be one of: `locked`, `implementing`, `synced`. If status is `draft`, refuse with: "Plan is still in draft. Run `/fv:plan` to finalize before syncing."
+- The plan frontmatter `status:` must NOT be `closed`, `archived`, `abandoned`, or `superseded`. All other statuses (including `active`, `locked`, `implementing`, `synced`, or missing/empty status) are valid for sync.
 - If status is `closed`, refuse with: "Plan is already closed. No sync needed."
+- If status is `draft`, warn but allow: "Plan is still in draft. Sync will calculate completion but won't change status."
+
+---
+
+## Step 1B: Batch Sync (--all mode)
+
+This step ONLY runs when `--all` is passed. It replaces Steps 2-7 entirely. You MUST sync ALL qualifying plans, not just one.
+
+### 1B.1: Discover and List Plans
+
+Scan `docs/plans/_index.md` for all plan entries. If no index exists, scan `docs/plans/*.md` files directly and read each file's frontmatter.
+
+**Qualifying statuses:** `active`, `locked`, `implementing`, `synced`, or no status field at all (legacy plans). Most plans from before the fv lifecycle will have `active` or no status -- these should all be synced.
+
+**Skip only:** `closed`, `draft`, `archived`, `abandoned`, `superseded`.
+
+Print the full discovery list immediately:
+
+```
+Plan discovery:
+  Qualifying (will sync):
+    1. <title> (<status or "no status">) -- <path>
+    2. <title> (<status or "no status">) -- <path>
+    3. <title> (<status or "no status">) -- <path>
+  Skipped:
+    - <title> (closed)
+    - <title> (archived)
+  Total: N to sync, M skipped
+```
+
+If zero qualifying plans, report "Nothing to sync" and stop.
+
+### 1B.2: Tier the Plans
+
+Split qualifying plans into two tiers based on last modification date:
+
+**Tier 1 -- Full Sync** (modified in last 30 days):
+- Run `git log -1 --format=%ci -- <plan-file>` for each qualifying plan
+- Plans modified within the last 30 days get full sync (read file, count steps, check git diff, calculate completion, detect drift)
+
+**Tier 2 -- Lightweight Sync** (older than 30 days):
+- Read frontmatter only (do not read full file or check git diff)
+- Calculate completion from checklist ratio if checkboxes exist
+- Set `last_synced` date
+- No drift detection (too old for meaningful diff)
+
+Print the tier split:
+
+```
+Plan sync tiers:
+  Tier 1 (full sync, last 30 days): N plans
+  Tier 2 (lightweight, older): M plans
+  Skipped (closed/archived): K plans
+```
+
+### 1B.3: Process Tier 1 Plans (Full Sync)
+
+Create one task per Tier 1 plan:
+
+- Task: "Full sync 1/N: <title>"
+- Task: "Full sync 2/N: <title>"
+
+Process each task:
+
+1. Mark task in_progress
+2. Read the full plan file
+3. Determine base branch (from plan frontmatter `branch:` or default `dev`/`main`)
+4. Run `git diff --name-only <base>..HEAD`
+5. Count checked (`[x]`) vs unchecked (`[ ]`) implementation steps
+6. Check if planned edit-set files were actually modified
+7. Calculate completion: `checked / total * 100`
+8. Detect drift: files changed not in plan, plan files not changed
+9. Update plan frontmatter: `last_synced: YYYY-MM-DD`
+10. Mark task completed
+11. Report: "Full sync <N>/<total>: <title> -- <completion%>"
+
+**REPEAT until all Tier 1 tasks are completed.**
+
+### 1B.4: Process Tier 2 Plans (Lightweight)
+
+Process all Tier 2 plans in a single pass -- no individual tasks needed:
+
+1. For each Tier 2 plan, read only the YAML frontmatter and scan for `- [x]` / `- [ ]` counts
+2. Calculate completion percentage
+3. Update frontmatter: `last_synced: YYYY-MM-DD`
+4. Report progress every 10 plans: "Lightweight sync: <N>/<total> processed..."
+
+### 1B.5: Update Index and Report
+
+After ALL plans (both tiers) are processed, update `docs/plans/_index.md` with new completion percentages.
+
+Print batch summary:
+
+```
+=== Batch Plan Sync Complete ===
+
+Tier 1 (full sync):
+| # | Plan | Status | Completion | Drift |
+|---|------|--------|-----------|-------|
+| 1 | <title> | locked | 0% -> 0% | none |
+| 2 | <title> | active | 30% -> 45% | 2 unplanned |
+
+Tier 2 (lightweight):
+  M plans synced, completion percentages updated
+
+Total: N full synced, M lightweight synced, K skipped
+```
+
+### 1B.6: Select Active Task
+
+Ask the user (using the blocking question tool):
+
+```
+Which plan should be the active task?
+
+1. <title> (locked, 0%)
+2. <title> (implementing, 45%)
+3. Keep current active task
+4. Clear active task
+```
+
+Update `docs/ai/current-work.md` based on the user's choice.
+
+**After 1B.4, the skill is done. Do NOT fall through to Step 2.**
 
 ---
 
@@ -79,7 +204,11 @@ Gather implementation evidence:
 2. Run `git log --oneline $BASE_REF..HEAD` to get commits made during implementation.
 3. For each file in the plan's `## Definite Edit Set` or `## Files Currently Being Modified` (from current-work.md), check whether it appears in the actual diff.
 
-### 3c: Classify Differences
+### 3c: GitNexus Diff Analysis (if available)
+
+If `.gitnexus/` exists in the project root, use the `detect_changes` tool to map the implementation diff (`$BASE_REF..HEAD`) to affected processes. This provides richer drift detection than file-name comparison alone -- it reveals transitive effects such as event chains, observer cascades, and job dispatch paths that touch processes beyond the directly modified files. Feed the affected processes list into the classification step below to augment the file-based categories with process-level drift signals. If GitNexus is not available, fall back to file-based comparison only.
+
+### 3d: Classify Differences
 
 Produce four categories:
 
@@ -97,6 +226,8 @@ For each drifted item, check commit messages for rationale. If a commit message 
 ## Step 4: Update Plan Artifact
 
 Apply changes to the plan file at `$PLAN_PATH`.
+
+Note: if GitNexus `detect_changes` in 3c reported affected processes not covered by the plan, include those in the "Drift: Unplanned Changes" category with a `(process-level)` tag.
 
 ### 4a: Update Implementation Steps
 

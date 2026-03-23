@@ -1,427 +1,609 @@
 ---
 name: fv:review
-description: Run convergent code review with Laravel-specific agents. Use after implementation to review code changes against plan and impact artifacts.
-argument-hint: "[PR number, branch name, or 'latest'] [--serial]"
+description: Perform exhaustive code reviews using multi-agent analysis, ultra-thinking, and worktrees
+argument-hint: "[PR number, GitHub URL, branch name, or latest] [--serial] [--auto]"
 ---
 
-# Convergent Code Review with Laravel Agents
+# Review Command
 
-## Interaction Method
+<command_purpose> Perform exhaustive code reviews using multi-agent analysis, ultra-thinking, and Git worktrees for deep local inspection. </command_purpose>
 
-When this skill needs to ask the user a blocking question, use the platform's question tool:
+## Introduction
 
-- Claude Code: `AskUserQuestion`
-- Codex: `request_user_input`
-- Gemini: `ask_user`
-- Fallback: present numbered options and wait for user reply
+<role>Senior Code Review Architect with expertise in security, performance, architecture, and quality assurance</role>
 
-## Task Tracking
+### Execution Modes
 
-When creating or updating tasks, use the platform's task tools:
+- `--auto`: Autonomous mode -- auto-fix P1/P2 without asking.
+- `--serial`: Run agents sequentially.
 
-- Claude Code: `TaskCreate` / `TaskUpdate` / `TaskList`
-- Codex: `update_plan`
-- Fallback: maintain progress in structured text
+## Prerequisites
 
-## Overview
+<requirements>
+- Git repository with GitHub CLI (`gh`) installed and authenticated
+- Clean main/master branch
+- Proper permissions to create worktrees and access the repository
+- For document reviews: Path to a markdown file or document
+</requirements>
 
-Run a multi-agent convergent code review against the current diff, comparing implementation to plan and impact artifacts. Laravel-specific agents are mandatory panel members. The review converges when no new P1 or P2 findings remain across rounds.
+## Main Tasks
 
-### Key References
-
-- [convergence-rules.md](./references/convergence-rules.md)
-- [severity-policy.md](./references/severity-policy.md)
-- [laravel-best-practices.md](./references/laravel-best-practices.md)
-
-### Severity Classification
-
-| Severity | Criteria | Blocks Merge |
-|----------|----------|--------------|
-| P1 | Correctness, security, data loss, broken business logic | Yes |
-| P2 | Performance, convention violation, missing error handling, test gaps | No (tracked) |
-| P3 | Style, naming, minor optimization, documentation | No |
-
----
-
-## Phase 1: Review Target Setup
-
-### Parse Review Target
+### 1. Determine Review Target & Setup (ALWAYS FIRST)
 
 <review_target> #$ARGUMENTS </review_target>
 
-Determine the review target from the argument:
+<thinking>
+First, I need to determine the review target type and set up the code for analysis.
+</thinking>
 
-1. **Numeric value** -- treat as PR number. Fetch PR metadata via `gh pr view <number> --json title,body,files,headRefName,baseRefName,labels,url`.
-2. **GitHub URL** -- extract PR number from URL, then fetch metadata as above.
-3. **Branch name** -- resolve to local branch. Compute diff against the base branch (main/master/dev).
-4. **`latest`** -- find the most recent open PR authored by the current user via `gh pr list --author @me --limit 1 --json number`.
-5. **Empty** -- use the current branch. Compute diff against the base branch.
+#### Immediate Actions:
 
-### Branch Context Check
+<task_list>
 
-Determine the current branch via git. If the review target is on a different branch:
+- [ ] Determine review type: PR number (numeric), GitHub URL, file path (.md), or empty (current branch)
+- [ ] Check current git branch
+- [ ] If ALREADY on the target branch (PR branch, requested branch name, or the branch already checked out for review) → proceed with analysis on current branch
+- [ ] If DIFFERENT branch than the review target → offer to use worktree: "Use git-worktree skill for isolated Call `skill: git-worktree` with branch name"
+- [ ] Fetch PR metadata using `gh pr view --json` for title, body, files, linked issues
+- [ ] Set up language-specific analysis tools
+- [ ] Prepare security scanning environment
+- [ ] Make sure we are on the branch we are reviewing. Use gh pr checkout to switch to the branch or manually checkout the branch.
 
-- Ask the user: "Review target is on branch `<target>` but you are on `<current>`. Switch to target branch using the `git-worktree` skill for isolated review?"
-- If user accepts, load the `git-worktree` skill with the target branch name.
-- If user declines, proceed on the current branch (user may have the code locally already).
+Ensure that the code is ready for analysis (either in worktree or on current branch). ONLY then proceed to the next step.
 
-### Load Artifacts
+</task_list>
 
-Search for related plan and impact artifacts:
+#### Protected Artifacts
 
-1. **Plan artifact**: Search `docs/plans/` for a file matching the task slug, PR title keywords, or branch name. If found, load its frontmatter and task list for drift detection.
-2. **Impact artifact**: Search `docs/plans/` or `docs/ai/` for an impact assessment file associated with the same task. If found, load the blast-radius map and dependency list.
-3. If neither artifact exists, proceed without them. Note their absence in the final output.
+<protected_artifacts>
+The following paths are compound-engineering pipeline artifacts and must never be flagged for deletion, removal, or gitignore by any review agent:
 
-### Collect Changed Files
+- `docs/brainstorms/*-requirements.md` — Requirements documents created by `/fv:brainstorm`. These are the product-definition artifacts that planning depends on.
+- `docs/plans/*.md` — Plan files created by `/fv:plan`. These are living documents that track implementation progress (checkboxes are checked off by `/fv:work`).
+- `docs/solutions/*.md` -- Solution documents created during the pipeline.
+- `docs/impact/*.md` -- Impact assessment artifacts created by `/fv:impact`.
+- `docs/ai/*.md` -- AI collaboration context documents.
+- `docs/handoffs/*.md` -- Session handoff documents.
 
-Gather the list of changed files for conditional agent selection:
+If a review agent flags any file in these directories for cleanup or removal, discard that finding during synthesis. Do not create a todo for it.
+</protected_artifacts>
 
-- For a PR: use the files list from `gh pr view --json files`.
-- For a branch diff: use the native file-search/diff tool or `git diff --name-only <base>...HEAD`.
+#### Load Review Agents
 
-Record the file extensions and paths for use in agent panel assembly.
+Read `fuelviews-engineering.local.md` in the project root. If found, use `review_agents` from YAML frontmatter. If the markdown body contains review context, pass it to each agent as additional instructions.
 
----
+If no settings file exists, use the fv default review panel:
 
-## Phase 2: Load Review Agent Panel
-
-### Read Custom Configuration
-
-Read `fuelviews-engineering.local.md` in the project root. If found, check for a `review_agents` key in YAML frontmatter. If the markdown body contains review context, pass it to each agent as additional instructions.
-
-If the file does not exist, skip configuration loading and use the default panel below.
-
-### Default Agent Panel
-
-#### Mandatory Agents (always run, cannot be removed)
-
-These agents run on every review regardless of configuration:
-
+**Mandatory:**
 - `fuelviews-engineering:review:laravel-reviewer`
 - `fuelviews-engineering:review:php-reviewer`
 - `fuelviews-engineering:review:blade-reviewer`
 
-#### Default Agents (run unless explicitly removed via .local.md)
-
+**Standard:**
 - `fuelviews-engineering:review:laravel-conventions-reviewer`
 - `fuelviews-engineering:review:laravel-performance-reviewer`
 - `compound-engineering:review:code-simplicity-reviewer`
 - `compound-engineering:review:security-sentinel`
+- `compound-engineering:review:pattern-recognition-specialist`
 
-#### Conditional Agents (auto-added based on changed files)
+#### Choose Execution Mode
 
-Evaluate the changed file list and add agents when criteria match:
+<execution_mode>
 
-| Condition | Files Matching | Agent Added |
-|-----------|---------------|-------------|
-| TypeScript changes | `*.ts`, `*.tsx` | `compound-engineering:review:kieran-typescript-reviewer` |
-| Migration changes | `database/migrations/*.php`, `*.sql` | `compound-engineering:review:data-integrity-guardian` |
-| JS / Livewire changes | `*.js`, `*.vue`, `*livewire*.php`, `resources/js/**` | `fuelviews-engineering:review:javascript-reviewer` |
-| Deploy-risk changes | `composer.json`, `composer.lock`, `.env.example`, `config/*.php`, `routes/*.php`, `Dockerfile`, `docker-compose*`, `.github/workflows/*` | `compound-engineering:review:deployment-verification-agent` |
-| PostgreSQL-heavy changes | Migration files with raw SQL, `DB::` facade usage, query builder joins/unions, stored procedure references | `fuelviews-engineering:review:postgresql-reviewer` |
+Before launching review agents, check for context constraints:
 
-Multiple conditions may fire. Add all matching agents; deduplication prevents double-dispatch.
+**If `--serial` flag is passed OR conversation is in a long session:**
 
-### Mandatory Set Enforcement
+Run agents ONE AT A TIME in sequence. Wait for each agent to complete before starting the next. This uses less context but takes longer.
 
-If `fuelviews-engineering.local.md` defines a custom `review_agents` list that omits any of the three mandatory agents (`laravel-reviewer`, `php-reviewer`, `blade-reviewer`):
+**Default (parallel):**
 
-1. Warn the user: "Mandatory review agents were missing from your custom panel and have been restored: [list]."
-2. Add the missing agents back to the panel.
+Run all agents simultaneously for speed. If you hit context limits, retry with `--serial` flag.
 
-### Assemble Final Panel
+**Auto-detect:** If more than 5 review agents are configured, automatically switch to serial mode and inform the user:
+"Running review agents in serial mode (6+ agents configured). Use --parallel to override."
 
-Merge mandatory + default (or custom) + conditional agents into the final panel. Record the total agent count.
+</execution_mode>
 
----
+#### Framework Version Resolution
 
-## Phase 3: Execution Mode Selection
+Before dispatching agents, determine framework versions via Boost `application-info` MCP tool or by reading `composer.json`. Pass version context (Laravel, PHP, Livewire, FilamentPHP versions) to all agents so they can tailor advice to the correct API surface.
 
-Determine how to dispatch agents:
+#### GitNexus Pre-Dispatch
 
-| Condition | Mode | Behavior |
-|-----------|------|----------|
-| `--serial` flag passed | Serial | Run agents one at a time, wait for each to complete |
-| Agent count <= 5 | Parallel | Dispatch all agents simultaneously via Task tool |
-| Agent count > 5 | Serial (auto) | Switch to serial and inform user: "Running review agents in serial mode (6+ agents configured). Pass without `--serial` to try parallel for smaller panels." |
+If `.gitnexus/` exists in the project root, run `detect_changes` on the diff before dispatching agents. Pass affected processes and transitive dependency information to each agent so they can assess broader impact.
 
-In serial mode, collect each agent's findings before dispatching the next. In parallel mode, collect all findings after all agents complete.
+#### Parallel Agents to review the PR:
 
----
+<parallel_tasks>
 
-## Phase 4: Convergent Review Loop
+**Parallel mode (default for ≤5 agents):**
 
-Maximum 4 rounds. Track state:
+Run all configured review agents in parallel using Task tool. For each agent in the `review_agents` list:
 
 ```
-round_number: 1
-convergence_status: pending
-consecutive_p3_only_rounds: 0
-total_findings: []
-resolved_findings: []
-excluded_findings: []
+Task {agent-name}(PR content + review context from settings body)
 ```
 
-### Round Focus Escalation
+**Serial mode (--serial flag, or auto for 6+ agents):**
 
-| Round | Depth Level | Focus |
-|-------|-------------|-------|
-| 1 | Broad | All P1/P2/P3 findings across all changed files |
-| 2 | Interaction | Cross-file effects, event chains, service boundaries |
-| 3 | System-wide | Error propagation, state lifecycle, legacy coupling |
-| 4 | Adversarial | P1 risks only, challenge prior P2 severities upward |
+Run configured review agents ONE AT A TIME. For each agent in the `review_agents` list, wait for it to complete before starting the next:
 
-### Round Execution
-
-For each round:
-
-#### Step A: Dispatch Review Agents
-
-Dispatch all panel agents with the following context:
-
-- PR diff (or branch diff)
-- Plan artifact (if loaded) -- task list, scope, constraints
-- Impact artifact (if loaded) -- blast-radius map, dependency chain
-- Round number and focus level
-- Prior round findings summary (compressed per progressive summarization rules)
-
-Use the execution mode determined in Phase 3 (parallel or serial).
-
-For parallel dispatch:
 ```
-For each agent in final_panel:
-  Task {agent-namespace}(diff + plan context + impact context + round focus)
-```
-
-For serial dispatch:
-```
-For each agent in final_panel:
-  1. Task {agent-namespace}(diff + plan context + impact context + round focus)
+For each agent in review_agents:
+  1. Task {agent-name}(PR content + review context)
   2. Wait for completion
   3. Collect findings
   4. Proceed to next agent
 ```
 
-#### Step B: Collect Findings
+Always run these last regardless of mode:
+- Task compound-engineering:review:agent-native-reviewer(PR content) - Verify new features are agent-accessible
+- Task compound-engineering:research:learnings-researcher(PR content) - Search docs/solutions/ for past issues related to this PR's modules and patterns
 
-Gather all agent responses. Normalize each finding to the standard format:
+</parallel_tasks>
 
-- Finding ID: `FV-RNNN` (R = round number, NNN = sequence starting at 001)
-- Severity: P1 / P2 / P3
-- Confidence: definite / probable / possible / blind_spot
-- Affected files: list of file paths
-- Evidence summary: one paragraph max
-- Source agent: fully-qualified agent namespace
-- Prior-round lineage: if related to an earlier finding
+#### Conditional Agents (Run if applicable):
 
-#### Step C: Synthesis and Deduplication
+<conditional_agents>
 
-Dispatch `fuelviews-engineering:workflow:synthesis-agent` with all collected findings from this round plus prior round findings.
+These agents are run ONLY when the PR matches specific criteria. Check the PR files list to determine if they apply:
 
-The synthesis agent applies 3-layer deduplication:
+**MIGRATIONS: If PR contains database migrations, schema changes, or data backfills:**
 
-1. **Exact match**: Same file, same line range, same finding type. Merge, keep highest severity.
-2. **Semantic overlap**: Different files but same root cause. Merge into single finding, reference all affected files.
-3. **Subsumption**: One finding is a strict subset of another. Keep the broader finding, attach the narrower as evidence.
+- Task compound-engineering:review:schema-drift-detector(PR content) - Detects unrelated schema changes by cross-referencing against included migrations (run FIRST)
+- Task compound-engineering:review:data-migration-expert(PR content) - Validates ID mappings match production, checks for swapped values, verifies rollback safety
+- Task compound-engineering:review:deployment-verification-agent(PR content) - Creates Go/No-Go deployment checklist with SQL verification queries
+- Task fuelviews-engineering:review:postgresql-reviewer(PR content) - PostgreSQL-specific review for query patterns, index usage, and migration safety
 
-Output: deduplicated finding set with unique IDs, severities, and evidence.
+**When to run:**
+- PR includes files matching `database/migrations/*.php`
+- PR modifies columns that store IDs, enums, or mappings
+- PR includes data backfill scripts or artisan commands
+- PR title/body mentions: migration, backfill, data transformation, ID mapping
 
-#### Step D: Impact Re-assessment
+**What these agents check:**
+- `schema-drift-detector`: Cross-references schema changes against PR migrations to catch unrelated columns/indexes from local database state
+- `data-migration-expert`: Verifies hard-coded mappings match production reality (prevents swapped IDs), checks for orphaned associations, validates dual-write patterns
+- `deployment-verification-agent`: Produces executable pre/post-deploy checklists with SQL queries, rollback procedures, and monitoring plans
+- `postgresql-reviewer`: Validates PostgreSQL-specific patterns, index strategies, and migration safety
 
-Dispatch `fuelviews-engineering:workflow:impact-assessment-agent` to evaluate:
+**JS/LIVEWIRE: If PR contains JavaScript or Livewire files:**
 
-- Areas newly touched that were not in the original impact artifact
-- Cross-cutting concerns surfaced by review findings
-- Dependency chains that extend beyond the original blast radius
+- Task fuelviews-engineering:review:javascript-reviewer(PR content) - Reviews JS/Alpine/Livewire patterns and interactions
+- Task compound-engineering:review:julik-frontend-races-reviewer(PR content) - Detects frontend race conditions
 
-Record any impact misses for the final output.
+**When to run:**
+- PR includes files matching `resources/js/**/*.js`, `resources/js/**/*.ts`, or Livewire component files
 
-#### Step E: Present Findings and Apply Fixes
+**TYPESCRIPT: If PR contains TypeScript files:**
 
-Present the synthesized findings to the user grouped by severity:
+- Task compound-engineering:review:kieran-typescript-reviewer(PR content) - TypeScript-specific review for type safety and patterns
 
-**P1 -- Critical (blocks merge)**
-List all P1 findings with evidence, affected files, and suggested fix.
+**When to run:**
+- PR includes files matching `**/*.ts` or `**/*.tsx`
 
-**P2 -- Important (should fix)**
-List all P2 findings with evidence and recommended action.
+</conditional_agents>
 
-**P3 -- Minor (optional)**
-List P3 findings briefly.
+### 2. Ultra-Thinking Deep Dive Phases
 
-For P1 and P2 findings:
-- Ask the user which findings to fix, exclude, or defer (P2 only).
-- Apply fixes for accepted P1 and P2 findings. Use the native file-edit tool to make changes.
-- For excluded findings, record the exclusion with rationale per the exclusion handling rules in [severity-policy.md](./references/severity-policy.md).
-- Only users can exclude P1 findings. Agents may suggest but not execute P1 exclusions.
+<ultrathink_instruction> For each phase below, spend maximum cognitive effort. Think step by step. Consider all angles. Question assumptions. And bring all reviews in a synthesis to the user.</ultrathink_instruction>
 
-#### Step F: Plan Drift Detection
+<deliverable>
+Complete system context map with component interactions
+</deliverable>
 
-If a plan artifact was loaded, compare the current implementation against the plan:
+#### Phase 1: Stakeholder Perspective Analysis
 
-- Check off completed plan tasks that the implementation satisfies.
-- Flag tasks that were planned but not implemented (missing scope).
-- Flag implemented changes that were not in the plan (scope creep).
-- Record plan deltas for the final output.
+<thinking_prompt> ULTRA-THINK: Put yourself in each stakeholder's shoes. What matters to them? What are their pain points? </thinking_prompt>
 
-#### Step G: Evaluate Convergence
+<stakeholder_perspectives>
 
-Apply convergence guards:
+1. **Developer Perspective** <questions>
 
-**HAS_CONVERGED** -- Stop (converged):
-- This round produced zero new P1 or P2 findings.
-- All prior P1 findings have been addressed or excluded.
-- Transition to Phase 5 (Output).
+   - How easy is this to understand and modify?
+   - Are the APIs intuitive?
+   - Is debugging straightforward?
+   - Can I test this easily? </questions>
 
-**P3-only convergence** -- Stop:
-- This round and the previous round both produced only P3 findings (no new P1 or P2).
-- `consecutive_p3_only_rounds >= 2` triggers stop.
-- Transition to Phase 5 (Output).
+2. **Operations Perspective** <questions>
 
-**FORCE_STOP** -- Stop (max rounds):
-- `round_number >= 4` regardless of findings.
-- Transition to Phase 5 (Output) with a note that max rounds were reached.
+   - How do I deploy this safely?
+   - What metrics and logs are available?
+   - How do I troubleshoot issues?
+   - What are the resource requirements? </questions>
 
-**CONTEXT_PRESSURE** -- Stop (budget):
-- If estimated next-round token cost would exceed 80% of model context window.
-- Transition to Phase 5 (Output) with a `truncated` flag.
+3. **End User Perspective** <questions>
 
-**Continue** -- Next round:
-- New actionable P1 or P2 findings remain.
-- Increment `round_number`.
-- Apply progressive summarization to prior round findings:
-  - Round N-2 and older: compress to finding ID + severity + one-line summary
-  - Round N-1: kept at full fidelity
-  - Current round: full fidelity
-- Proceed to Step A with the next round's focus level.
+   - Is the feature intuitive?
+   - Are error messages helpful?
+   - Is performance acceptable?
+   - Does it solve my problem? </questions>
 
-#### Step H: Update State
+4. **Security Team Perspective** <questions>
 
-```
-round_number += 1
-Update consecutive_p3_only_rounds (reset to 0 if P1/P2 found, increment if P3 only)
-Append new findings to total_findings
-Move fixed findings to resolved_findings
-Move excluded findings to excluded_findings
-```
+   - What's the attack surface?
+   - Are there compliance requirements?
+   - How is data protected?
+   - What are the audit capabilities? </questions>
 
----
+5. **Business Perspective** <questions>
+   - What's the ROI?
+   - Are there legal/compliance risks?
+   - How does this affect time-to-market?
+   - What's the total cost of ownership? </questions> </stakeholder_perspectives>
 
-## Phase 5: Output
+#### Phase 2: Scenario Exploration
 
-### Protected Artifacts
+<thinking_prompt> ULTRA-THINK: Explore edge cases and failure scenarios. What could go wrong? How does the system behave under stress? </thinking_prompt>
 
-Never flag the following paths for deletion, removal, or gitignore:
+<scenario_checklist>
 
-- `docs/plans/*.md` -- Plan files from `/fv:plan`
-- `docs/ai/*.md` -- AI workflow artifacts
-- `docs/handoffs/*.md` -- Handoff documents
+- [ ] **Happy Path**: Normal operation with valid inputs
+- [ ] **Invalid Inputs**: Null, empty, malformed data
+- [ ] **Boundary Conditions**: Min/max values, empty collections
+- [ ] **Concurrent Access**: Race conditions, deadlocks
+- [ ] **Scale Testing**: 10x, 100x, 1000x normal load
+- [ ] **Network Issues**: Timeouts, partial failures
+- [ ] **Resource Exhaustion**: Memory, disk, connections
+- [ ] **Security Attacks**: Injection, overflow, DoS
+- [ ] **Data Corruption**: Partial writes, inconsistency
+- [ ] **Cascading Failures**: Downstream service issues </scenario_checklist>
 
-If any review agent flagged files in these directories, discard that finding during synthesis.
+### 3. Multi-Angle Review Perspectives
 
-### Final Report Structure
+#### Technical Excellence Angle
 
-Present the review summary with these sections:
+- Code craftsmanship evaluation
+- Engineering best practices
+- Technical documentation quality
+- Tooling and automation assessment
 
-#### Review Summary
+#### Business Value Angle
 
-- Total rounds completed: N (converged / max rounds / truncated)
-- Agents dispatched: list of all agents with namespaces
-- Total findings: N (P1: X, P2: Y, P3: Z)
+- Feature completeness validation
+- Performance impact on users
+- Cost-benefit analysis
+- Time-to-market considerations
 
-#### Resolved Findings
+#### Risk Management Angle
 
-List each resolved finding with:
-- Finding ID and original severity
-- Description
-- Fix applied (file path and change summary)
+- Security risk assessment
+- Operational risk evaluation
+- Compliance risk verification
+- Technical debt accumulation
 
-#### Excluded Findings
+#### Team Dynamics Angle
 
-List each excluded finding with:
-- Finding ID and original severity
-- Reason for exclusion
-- Who approved the exclusion
+- Code review etiquette
+- Knowledge sharing effectiveness
+- Collaboration patterns
+- Mentoring opportunities
 
-#### Open Findings
+### 4. Simplification and Minimalism Review
 
-List any findings that remain unresolved:
-- P1 findings: prominently marked with blocking status
-- P2 findings: marked as tracked, include deferral rationale if deferred
-- P3 findings: listed for reference
+Run the Task compound-engineering:review:code-simplicity-reviewer() to see if we can simplify the code.
 
-#### Plan Deltas (if plan artifact was loaded)
+### 5. Findings Synthesis and Todo Creation Using file-todos Skill
 
-- Tasks completed by implementation
-- Tasks missing from implementation
-- Scope added beyond plan
+<critical_requirement> ALL findings MUST be stored in the todos/ directory using the file-todos skill. Create todo files immediately after synthesis - do NOT present findings for user approval first. Use the skill for structured todo management. </critical_requirement>
 
-#### Impact Misses
+#### Step 1: Synthesize All Findings
 
-- Areas touched during implementation not covered by the original impact artifact
-- New dependency chains discovered during review
+<thinking>
+Consolidate all agent reports into a categorized list of findings.
+Remove duplicates, prioritize by severity and impact.
+</thinking>
 
-### Merge Recommendation
+<synthesis_tasks>
 
-Evaluate merge readiness:
+- [ ] Collect findings from all parallel agents
+- [ ] Surface learnings-researcher results: if past solutions are relevant, flag them as "Known Pattern" with links to docs/solutions/ files
+- [ ] Discard any findings that recommend deleting or gitignoring files in `docs/brainstorms/`, `docs/plans/`, or `docs/solutions/` (see Protected Artifacts above)
+- [ ] Run `fuelviews-engineering:workflow:synthesis-agent` for 3-layer dedup before creating todos
+- [ ] Categorize by type: security, performance, architecture, quality, etc.
+- [ ] Assign severity levels: 🔴 CRITICAL (P1), 🟡 IMPORTANT (P2), 🔵 NICE-TO-HAVE (P3)
+- [ ] Remove duplicate or overlapping findings
+- [ ] Estimate effort for each finding (Small/Medium/Large)
 
-- **If P1 findings remain open**: "P1 findings remain. Do not merge until resolved."
-- **If P2 findings are deferred**: "P2 findings deferred with rationale. Merge is permitted but track the deferrals."
-- **If clean**: "Review converged. No blocking findings. Safe to merge."
+</synthesis_tasks>
 
-### Suggested Next Steps
+#### Step 2: Create Todo Files Using file-todos Skill
 
-Based on review outcome, suggest one of:
+<critical_instruction> Use the file-todos skill to create todo files for ALL findings immediately. Do NOT present findings one-by-one asking for user approval. Create all todo files in parallel using the skill, then summarize results to user. </critical_instruction>
 
-- If plan artifact exists and deltas were found: "Run `/fv:plan-sync` to reconcile plan with implementation."
-- If impact misses were found: "Run `/fv:impact` to update the blast-radius assessment."
-- If clean and ready: "Proceed with merge. Run `/fv:close-task` after merge to finalize."
-- If P1 remains: "Resolve the P1 findings listed above, then re-run `/fv:review` for a follow-up pass."
+**Implementation Options:**
 
----
+**Option A: Direct File Creation (Fast)**
 
-## Appendix: Configuration Reference
+- Create todo files directly using Write tool
+- All findings in parallel for speed
+- Use standard template from `.claude/skills/file-todos/assets/todo-template.md`
+- Follow naming convention: `{issue_id}-pending-{priority}-{description}.md`
 
-### fuelviews-engineering.local.md Format
+**Option B: Sub-Agents in Parallel (Recommended for Scale)** For large PRs with 15+ findings, use sub-agents to create finding files in parallel:
 
-```yaml
----
-review_agents:
-  mandatory:
-    - fuelviews-engineering:review:laravel-reviewer
-    - fuelviews-engineering:review:php-reviewer
-    - fuelviews-engineering:review:blade-reviewer
-  default:
-    - fuelviews-engineering:review:laravel-conventions-reviewer
-    - fuelviews-engineering:review:laravel-performance-reviewer
-    - compound-engineering:review:code-simplicity-reviewer
-    - compound-engineering:review:security-sentinel
-  disabled:
-    - compound-engineering:review:code-simplicity-reviewer  # example: disable a default agent
----
-
-Additional review context here is passed to every agent as supplementary instructions.
+```bash
+# Launch multiple finding-creator agents in parallel
+Task() - Create todos for first finding
+Task() - Create todos for second finding
+Task() - Create todos for third finding
+etc. for each finding.
 ```
 
-### Convergence Parameters
+Sub-agents can:
 
-| Parameter | Value |
-|-----------|-------|
-| Max review rounds | 4 |
-| Convergence signal | 0 new P1/P2 findings |
-| P3-only auto-stop | 2 consecutive P3-only rounds |
-| Context pressure threshold | 80% window utilization |
-| Max findings per round before compression | 50 |
+- Process multiple findings simultaneously
+- Write detailed todo files with all sections filled
+- Organize findings by severity
+- Create comprehensive Proposed Solutions
+- Add acceptance criteria and work logs
+- Complete much faster than sequential processing
 
-### Finding ID Format
+**Execution Strategy:**
+
+1. Synthesize all findings into categories (P1/P2/P3)
+2. Group findings by severity
+3. Launch 3 parallel sub-agents (one per severity level)
+4. Each sub-agent creates its batch of todos using the file-todos skill
+5. Consolidate results and present summary
+
+**Process (Using file-todos Skill):**
+
+1. For each finding:
+
+   - Determine severity (P1/P2/P3)
+   - Write detailed Problem Statement and Findings
+   - Create 2-3 Proposed Solutions with pros/cons/effort/risk
+   - Estimate effort (Small/Medium/Large)
+   - Add acceptance criteria and work log
+
+2. Use file-todos skill for structured todo management:
+
+   ```bash
+   skill: file-todos
+   ```
+
+   The skill provides:
+
+   - Template location: `.claude/skills/file-todos/assets/todo-template.md`
+   - Naming convention: `{issue_id}-{status}-{priority}-{description}.md`
+   - YAML frontmatter structure: status, priority, issue_id, tags, dependencies
+   - All required sections: Problem Statement, Findings, Solutions, etc.
+
+3. Create todo files in parallel:
+
+   ```bash
+   {next_id}-pending-{priority}-{description}.md
+   ```
+
+4. Examples:
+
+   ```
+   001-pending-p1-path-traversal-vulnerability.md
+   002-pending-p1-api-response-validation.md
+   003-pending-p2-concurrency-limit.md
+   004-pending-p3-unused-parameter.md
+   ```
+
+5. Follow template structure from file-todos skill: `.claude/skills/file-todos/assets/todo-template.md`
+
+**Todo File Structure (from template):**
+
+Each todo must include:
+
+- **YAML frontmatter**: status, priority, issue_id, tags, dependencies
+- **Problem Statement**: What's broken/missing, why it matters
+- **Findings**: Discoveries from agents with evidence/location
+- **Proposed Solutions**: 2-3 options, each with pros/cons/effort/risk
+- **Recommended Action**: (Filled during triage, leave blank initially)
+- **Technical Details**: Affected files, components, database changes
+- **Acceptance Criteria**: Testable checklist items
+- **Work Log**: Dated record with actions and learnings
+- **Resources**: Links to PR, issues, documentation, similar patterns
+
+**File naming convention:**
 
 ```
-FV-RNNN
+{issue_id}-{status}-{priority}-{description}.md
 
-FV   = Fuelviews prefix
-R    = Round number (1-4)
-NNN  = Sequence number within round (001-999)
+Examples:
+- 001-pending-p1-security-vulnerability.md
+- 002-pending-p2-performance-optimization.md
+- 003-pending-p3-code-cleanup.md
 ```
 
-Examples: `FV-1001` (first finding, round 1), `FV-2015` (fifteenth finding, round 2), `FV-4001` (first finding, round 4).
+**Status values:**
+
+- `pending` - New findings, needs triage/decision
+- `ready` - Approved by manager, ready to work
+- `complete` - Work finished
+
+**Priority values:**
+
+- `p1` - Critical (blocks merge, security/data issues)
+- `p2` - Important (should fix, architectural/performance)
+- `p3` - Nice-to-have (enhancements, cleanup)
+
+**Tagging:** Always add `code-review` tag, plus: `security`, `performance`, `architecture`, `laravel`, `quality`, etc.
+
+#### Step 3: Summary Report
+
+After creating all todo files, present comprehensive summary:
+
+````markdown
+## ✅ Code Review Complete
+
+**Review Target:** PR #XXXX - [PR Title] **Branch:** [branch-name]
+
+### Findings Summary:
+
+- **Total Findings:** [X]
+- **🔴 CRITICAL (P1):** [count] - BLOCKS MERGE
+- **🟡 IMPORTANT (P2):** [count] - Should Fix
+- **🔵 NICE-TO-HAVE (P3):** [count] - Enhancements
+
+### Created Todo Files:
+
+**P1 - Critical (BLOCKS MERGE):**
+
+- `001-pending-p1-{finding}.md` - {description}
+- `002-pending-p1-{finding}.md` - {description}
+
+**P2 - Important:**
+
+- `003-pending-p2-{finding}.md` - {description}
+- `004-pending-p2-{finding}.md` - {description}
+
+**P3 - Nice-to-Have:**
+
+- `005-pending-p3-{finding}.md` - {description}
+
+### Review Agents Used:
+
+- laravel-reviewer
+- security-sentinel
+- performance-oracle
+- architecture-strategist
+- agent-native-reviewer
+- [other agents]
+
+### Next Steps:
+
+1. **Address P1 Findings**: CRITICAL - must be fixed before merge
+
+   - Review each P1 todo in detail
+   - Implement fixes or request exemption
+   - Verify fixes before merging PR
+
+2. **Triage All Todos**:
+   ```bash
+   ls todos/*-pending-*.md  # View all pending todos
+   /triage                  # Use slash command for interactive triage
+   ```
+
+3. **Work on Approved Todos**:
+
+   ```bash
+   /resolve-todo-parallel  # Fix all approved items efficiently
+   ```
+
+4. **Track Progress**:
+   - Rename file when status changes: pending → ready → complete
+   - Update Work Log as you work
+   - Commit todos: `git add todos/ && git commit -m "refactor: add code review findings"`
+
+### Severity Breakdown:
+
+**🔴 P1 (Critical - Blocks Merge):**
+
+- Security vulnerabilities
+- Data corruption risks
+- Breaking changes
+- Critical architectural issues
+
+**🟡 P2 (Important - Should Fix):**
+
+- Performance issues
+- Significant architectural concerns
+- Major code quality problems
+- Reliability issues
+
+**🔵 P3 (Nice-to-Have):**
+
+- Minor improvements
+- Code cleanup
+- Optimization opportunities
+- Documentation updates
+````
+
+#### Step 4: Iterative Review
+
+Ask the user: "Want to run another review round to check for issues the fixes may have introduced?" If yes, re-dispatch agents. The user controls when to stop.
+
+### 6. End-to-End Testing (Optional)
+
+<detect_project_type>
+
+**First, detect the project type from PR files:**
+
+| Indicator | Project Type |
+|-----------|--------------|
+| `*.xcodeproj`, `*.xcworkspace`, `Package.swift` (iOS) | iOS/macOS |
+| `Gemfile`, `package.json`, `app/views/*`, `*.html.*` | Web |
+| Both iOS files AND web files | Hybrid (test both) |
+
+</detect_project_type>
+
+<offer_testing>
+
+After presenting the Summary Report, offer appropriate testing based on project type:
+
+**For Web Projects:**
+```markdown
+**"Want to run browser tests on the affected pages?"**
+1. Yes - run `/test-browser`
+2. No - skip
+```
+
+**For iOS Projects:**
+```markdown
+**"Want to run Xcode simulator tests on the app?"**
+1. Yes - run `/xcode-test`
+2. No - skip
+```
+
+**For Hybrid Projects (e.g., Rails + Hotwire Native):**
+```markdown
+**"Want to run end-to-end tests?"**
+1. Web only - run `/test-browser`
+2. iOS only - run `/xcode-test`
+3. Both - run both commands
+4. No - skip
+```
+
+</offer_testing>
+
+#### If User Accepts Web Testing:
+
+Spawn a subagent to run browser tests (preserves main context):
+
+```
+Task general-purpose("Run /test-browser for PR #[number]. Test all affected pages, check for console errors, handle failures by creating todos and fixing.")
+```
+
+The subagent will:
+1. Identify pages affected by the PR
+2. Navigate to each page and capture snapshots (using Playwright MCP or agent-browser CLI)
+3. Check for console errors
+4. Test critical interactions
+5. Pause for human verification on OAuth/email/payment flows
+6. Create P1 todos for any failures
+7. Fix and retry until all tests pass
+
+**Standalone:** `/test-browser [PR number]`
+
+#### If User Accepts iOS Testing:
+
+Spawn a subagent to run Xcode tests (preserves main context):
+
+```
+Task general-purpose("Run /xcode-test for scheme [name]. Build for simulator, install, launch, take screenshots, check for crashes.")
+```
+
+The subagent will:
+1. Verify XcodeBuildMCP is installed
+2. Discover project and schemes
+3. Build for iOS Simulator
+4. Install and launch app
+5. Take screenshots of key screens
+6. Capture console logs for errors
+7. Pause for human verification (Sign in with Apple, push, IAP)
+8. Create P1 todos for any failures
+9. Fix and retry until all tests pass
+
+**Standalone:** `/xcode-test [scheme]`
+
+### Important: P1 Findings Block Merge
+
+Any **🔴 P1 (CRITICAL)** findings must be addressed before merging the PR. Present these prominently and ensure they're resolved before accepting the PR.

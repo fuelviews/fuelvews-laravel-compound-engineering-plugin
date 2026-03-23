@@ -27,6 +27,93 @@ Create a task list for this repo onboarding with items for each phase below. Upd
 
 ---
 
+## Phase 0: GitNexus Bootstrap (if available)
+
+Before any scanning, check if GitNexus can provide a deep knowledge graph.
+
+### 0a: Check GitNexus Status
+
+Look for `.gitnexus/` in the project root.
+
+- **If `.gitnexus/` exists**: Check freshness by comparing `.gitnexus/` last modified against `git log -1 --format=%ci`. If the index is more than 24 hours older than the latest commit, re-index:
+  ```bash
+  gitnexus analyze
+  ```
+- **If `.gitnexus/` does not exist but `gitnexus` is installed** (check `which gitnexus`): Ask the user:
+  ```
+  GitNexus is installed but this repo has not been indexed.
+  Indexing enables deep dependency analysis for repo catch-up.
+
+  1. Index now (recommended, takes 1-5 minutes)
+  2. Skip -- use file-based scanning only
+  ```
+  If the user chooses to index, run:
+  ```bash
+  gitnexus analyze
+  gitnexus analyze --skills
+  ```
+  Then add `.gitnexus/` to `.gitignore` if not already present.
+- **If GitNexus is not installed** (neither `which gitnexus` nor `npx gitnexus --version` succeeds): Ask the user:
+  ```
+  GitNexus is not installed. It provides graph-powered code intelligence
+  that significantly improves repo catch-up accuracy (dependency tracing,
+  execution flows, functional clusters, architecture docs).
+
+  1. Install and index now (recommended)
+  2. Skip -- use file-based scanning only
+  ```
+  If the user chooses to install, run:
+  ```bash
+  npm install -g gitnexus
+  gitnexus analyze
+  gitnexus analyze --skills
+  claude mcp add gitnexus -- npx -y gitnexus@latest mcp
+  gitnexus setup
+  ```
+  Then add `.gitnexus/` to `.gitignore` if not already present.
+  Inform the user: "GitNexus installed. Run `/reload-plugins` to activate MCP tools, then re-run `/fv:repo-catchup` for graph-powered analysis."
+  Note: if the user installs but doesn't reload, the MCP tools won't be available in this session. The skill should proceed with file-based scanning and note that GitNexus will enhance future runs after reload.
+
+### 0b: Generate Repo-Specific Skills (if indexed)
+
+If GitNexus index exists (either pre-existing or just created), generate repo-specific skill files:
+
+```bash
+gitnexus analyze --skills
+```
+
+This creates skill files in `.claude/skills/generated/` that provide repository-aware context supplementing the standard fv skills.
+
+### 0c: Generate Architecture Documentation (if indexed)
+
+Use the `generate_map` MCP prompt to create architecture documentation with mermaid diagrams from the graph. This produces richer output than file-based scanning alone and feeds directly into `architecture.md` and `repo-map.md` scaffolding.
+
+Store the generated architecture documentation in `.context/compound-engineering/fv-repo-catchup/gitnexus-architecture.md` for use in subsequent phases.
+
+### 0d: Read Graph Resources (if indexed)
+
+Read these MCP resources to pre-populate data for later phases:
+
+1. **`gitnexus://repo/{name}/clusters`** -- Functional clusters with cohesion scores. Feeds into repo-map.md (domain directories, module boundaries) and architecture.md (component relationships).
+2. **`gitnexus://repo/{name}/processes`** -- All execution flows. Feeds into repo-map.md (entry points, key execution paths) and architecture.md (callback chains, job flows).
+
+Store each resource result in `.context/compound-engineering/fv-repo-catchup/` for reference during scaffolding.
+
+### 0e: Query Key Structures (if indexed)
+
+If the index exists, run targeted queries using the `query` MCP tool to supplement resource data:
+
+1. **Entry points**: `query "entry points and request handling"` -- feeds into repo-map.md
+2. **Core models**: `query "database models and relationships"` -- feeds into architecture.md
+3. **Event/listener chains**: `query "events listeners observers"` -- feeds into architecture.md callback chains
+4. **Job/queue flows**: `query "jobs queues dispatched"` -- feeds into architecture.md
+
+Store each query result in `.context/compound-engineering/fv-repo-catchup/` for reference during scaffolding.
+
+**Set a flag** `$GITNEXUS_AVAILABLE` for subsequent phases to check. When true, phases should prefer GitNexus data over file scanning for accuracy; when false, fall back to the file-based approach.
+
+---
+
 ## Phase 1: Scan Repo Structure
 
 ### 1a: Detect Project Type
@@ -41,7 +128,11 @@ Read the project root for key indicator files:
 3. **artisan** file in project root -- Confirms Laravel project.
 4. **.env.example** -- Read to identify database driver, queue driver, cache driver, and other environment configuration.
 
-### 1b: Detect Laravel Version and Ecosystem
+### 1b: Boost-Enhanced Detection (if available)
+
+If Boost MCP tools are available (check for `laravel-boost` in `composer.json`), use `mcp__laravel-boost__application-info` for accurate package detection -- this returns PHP version, Laravel version, database engine, installed packages with exact versions, and Eloquent model inventory from the running app. Use `mcp__laravel-boost__database-schema` for the complete table/column/index inventory instead of counting migration files. Boost data is authoritative (from the running application) vs. file scanning which may miss dynamic registrations and runtime-resolved packages. If Boost is not available, use the file-based detection below.
+
+### 1c: Detect Laravel Version and Ecosystem
 
 If Laravel is detected, determine the version range from `composer.json`:
 
@@ -68,7 +159,7 @@ If Laravel is detected, determine the version range from `composer.json`:
 
 Record all detected packages for inclusion in architecture documentation.
 
-### 1c: Detect Directory Patterns
+### 1d: Detect Directory Patterns
 
 Use file-search tools (Glob in Claude Code, equivalent in other platforms) to detect architectural patterns:
 
@@ -87,7 +178,7 @@ Use file-search tools (Glob in Claude Code, equivalent in other platforms) to de
 | Filament Resources | Directory `app/Filament/` exists |
 | Policies | Directory `app/Policies/` exists |
 
-### 1d: Collect Key Counts
+### 1e: Collect Key Counts
 
 Gather quantitative data for the repo map:
 
@@ -98,7 +189,7 @@ Gather quantitative data for the repo map:
 - Count controllers: files in `app/Http/Controllers/`
 - Count Livewire components: files in `app/Livewire/` (if detected)
 
-### 1e: Deep Analysis (Optional)
+### 1f: Deep Analysis (Optional)
 
 If the initial scan reveals an unusually complex layout (>5 non-standard directories under `app/`, or a `src/` directory alongside `app/`), dispatch the CE research agent for deeper analysis:
 
@@ -123,7 +214,13 @@ Create the `docs/ai/` directory and populate from templates:
 
 1. **architecture.md** -- Copy from `templates/repo-layer/architecture.md`. Fill in detected values:
    - Stack section: language, framework version, frontend tools, database driver, queue driver, deployment (leave blank if unknown)
-   - Key Patterns table: populate from Phase 1c detections
+   - **If Boost is available** (Phase 1b): use `mcp__laravel-boost__database-schema` output to populate the Database section with actual tables, columns, indexes, and foreign keys. This is authoritative over migration-file counting. If Boost is not available, document table count from migration files.
+   - Key Patterns table: populate from Phase 1d detections
+   - **If `$GITNEXUS_AVAILABLE`**: Enrich from Phase 0 data:
+     - Use the `generate_map` output from Phase 0c for mermaid diagrams and component relationships
+     - Callback/Event Chains section: populate from `gitnexus://repo/{name}/processes` resource (Phase 0d) and `query "events listeners observers"` results (Phase 0e)
+     - Functional Clusters: populate from `gitnexus://repo/{name}/clusters` resource (Phase 0d) with cohesion scores
+     - Architectural Decisions: note patterns visible in the dependency graph (e.g., "service layer mediates all controller-to-model access")
 
 2. **conventions.md** -- Copy from `templates/repo-layer/conventions.md`. Sample the codebase to detect conventions:
    - Read 3-5 controller files. Note: strict types declaration, return type usage, dependency injection patterns.
@@ -133,10 +230,14 @@ Create the `docs/ai/` directory and populate from templates:
 
 3. **repo-map.md** -- Copy from `templates/repo-layer/repo-map.md`. Fill in:
    - Entry points from route files and artisan commands
-   - Domain directories from Phase 1c
+   - Domain directories from Phase 1d
    - Configuration wiring from detected config files
    - Test locations from directory scan
-   - Key counts from Phase 1d
+   - Key counts from Phase 1e
+   - **If `$GITNEXUS_AVAILABLE`**: Replace the basic directory scan with GitNexus-powered data:
+     - Entry Points table: use Phase 0e entry point query results and `gitnexus://repo/{name}/processes` resource (Phase 0d) for richer route-to-controller-to-service mapping
+     - Domain Directories: augment with cohesion data from `gitnexus://repo/{name}/clusters` resource (Phase 0d) and dependency weight from the knowledge graph
+     - Add a "Key Dependency Flows" section: extract the top 5-10 most important execution paths from the processes resource
 
 4. **current-work.md** -- Copy from `templates/current-work.md`. Populate from git context:
    - If the current branch is not `main`/`dev`, infer an active task from the branch name.
@@ -318,13 +419,115 @@ Write all classified plans to `docs/plans/_index.md`:
 
 Include the classification source (`fv:repo-catchup`) in the Notes column for newly classified plans.
 
+### 3g: Batch Plan Sync
+
+After classification, sync every qualifying plan. This is a multi-plan operation -- you MUST process ALL qualifying plans, not just the first one.
+
+**Step 1: Build and tier the plan list.**
+
+Scan the classified inventory. Collect every plan where status is NOT `closed`, `archived`, `abandoned`, or `superseded`. Then split into tiers by last modification date (use `git log -1 --format=%ci -- <file>`):
+
+- **Tier 1 (full sync)**: Modified in the last 30 days. These get full sync with git diff, step counting, and drift detection.
+- **Tier 2 (lightweight)**: Older than 30 days. These get frontmatter-only sync with checkbox ratio calculation. No git diff or drift detection.
+
+Print the tier split:
+
+```
+Plan sync tiers:
+  Tier 1 (full sync, last 30 days): N plans
+  Tier 2 (lightweight, older): M plans
+  Skipped (closed/archived/abandoned): K plans
+```
+
+If zero qualifying plans in both tiers, report "No active plans to sync" and skip to Phase 4.
+
+**Step 2: Full sync Tier 1 plans.**
+
+Create one task per Tier 1 plan:
+
+- Task: "Full sync 1/N: <title>"
+- Task: "Full sync 2/N: <title>"
+
+Process each task:
+
+1. Mark task in_progress
+2. Read the full plan file
+3. Determine base branch (from plan frontmatter `branch:` or default `dev`/`main`)
+4. Run `git diff --name-only <base>..HEAD`
+5. Count checked vs unchecked steps
+6. Check if planned files were actually modified
+7. Calculate completion percentage
+8. Detect drift (unplanned changes, missing expected changes)
+9. Update plan frontmatter: `last_synced: YYYY-MM-DD`
+10. Mark task completed
+11. Report: "Full sync <N>/<total>: <title> -- <completion%>"
+
+**REPEAT until all Tier 1 tasks are completed.**
+
+**Step 3: Lightweight sync Tier 2 plans.**
+
+Process all Tier 2 plans in a single pass (no individual tasks):
+
+1. For each plan, read only YAML frontmatter and count `- [x]` / `- [ ]` occurrences
+2. Calculate completion percentage
+3. Update frontmatter: `last_synced: YYYY-MM-DD`
+4. Report progress every 10 plans: "Lightweight: <N>/<total>..."
+
+**Step 4: Update index and summary.**
+
+After ALL plans (both tiers) are processed, update `docs/plans/_index.md` with new completion percentages.
+
+Print batch summary:
+
+```
+=== Batch Plan Sync Complete ===
+
+Tier 1 (full sync):
+| # | Plan | Status | Completion | Drift |
+|---|------|--------|-----------|-------|
+| 1 | <title> | locked | 0% -> 0% | none |
+| 2 | <title> | implementing | 30% -> 45% | 2 unplanned |
+| 2 | <title> | active | 80% -> 85% | 1 unplanned |
+
+Tier 2 (lightweight):
+  M plans synced, completion percentages updated
+
+Total: N full synced, M lightweight, K skipped
+```
+
+**Step 5: Select active task.**
+
+Ask the user (using the blocking question tool):
+
+```
+Which plan should be the active task?
+
+1. <title> (locked, 0%)
+2. <title> (implementing, 45%)
+3. <title> (synced, 100%)
+4. Keep current active task
+5. Clear active task
+```
+
+Update `docs/ai/current-work.md` based on the choice.
+
 ---
 
 ## Phase 4: Identify Risks and Tools
 
 ### 4a: Risky Zone Detection
 
-Scan the codebase for patterns that indicate high-risk areas:
+**If `$GITNEXUS_AVAILABLE`**: Use graph-powered analysis via MCP tools for deeper risk detection:
+
+1. **Dead code**: `query` tool with "unreachable functions classes never called" -- find code that has no callers in the graph
+2. **Circular dependencies**: `cypher` tool with `MATCH (a)-[:CALLS]->(b)-[:CALLS]->(a) RETURN a, b` -- find mutual dependency cycles
+3. **High fan-out**: `context` tool on key service classes -- flag classes called by >10 others (fragile, high blast radius)
+4. **Orphaned routes**: Cross-reference `query` tool with "route handlers" against actual route definitions
+5. **Hidden coupling**: `impact` tool on core models -- reveal transitive dependencies that file scanning misses
+
+Merge graph results with the file-based scan below. Graph findings take priority for accuracy; file-based findings catch what the graph misses (dynamic dispatch, config-driven behavior).
+
+**File-based scan** (always runs, with or without GitNexus):
 
 | Risk Pattern | Detection Method | Threshold |
 |--------------|-----------------|-----------|
@@ -341,6 +544,7 @@ For each risk found, record:
 - File path
 - Risk type
 - Severity (high/medium/low)
+- Source: `gitnexus` or `file-scan`
 - Brief description
 
 ### 4b: Laravel Tool Recommendations
@@ -433,6 +637,7 @@ Print a structured summary to the terminal:
 
 Project:    <project name from composer.json or directory name>
 Type:       <Laravel X.x | PHP | Unknown>
+GitNexus:   <indexed (N symbols) | not available>
 Packages:   <count detected> (<key packages listed>)
 Patterns:   <detected patterns: Actions, Services, Repositories, etc.>
 
@@ -494,7 +699,7 @@ Suggested Next:
 
 ### CE Agents
 
-- `compound-engineering:research:repo-research-analyst` -- deep scan of repo structure when Phase 1e complexity threshold is met. Not dispatched by default.
+- `compound-engineering:research:repo-research-analyst` -- deep scan of repo structure when Phase 1f complexity threshold is met. Not dispatched by default.
 
 ### FV Agents
 
@@ -520,5 +725,8 @@ Write intermediate scan results to `.context/compound-engineering/fv-repo-catchu
 - Package detection results
 - Directory scan results
 - Plan classification signal data
+- GitNexus architecture documentation (if generated in Phase 0c)
+- GitNexus resource results (if read in Phase 0d)
+- GitNexus query results (if generated in Phase 0e)
 
 Clean up after the summary is emitted unless the user requests inspection.

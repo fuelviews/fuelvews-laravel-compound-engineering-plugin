@@ -204,25 +204,51 @@ For every entry in the edit set and read set, record evidence:
 
 When GitNexus MCP tools are available, use them to supplement file-based tracing. GitNexus provides graph-powered discovery that catches dependencies file-search misses.
 
-### Available MCP Tools
+### Available MCP Tools (7)
 
 | Tool | Purpose | When to Use |
 |------|---------|-------------|
-| `impact` | Blast radius from a symbol | After identifying a key function/class to trace outward |
-| `context` | 360-degree view of a symbol | When you need full caller/callee/relation graph for a model or service |
-| `query` | Hybrid search across codebase | When file-search patterns are insufficient for dynamic dispatch |
-| `detect_changes` | Map diff to affected flows | At deep-wiring+ depth to find transitive effects of a change |
-| `cypher` | Raw graph queries | For custom dependency patterns not covered by other tools |
+| `list_repos` | Discover indexed repositories | At session start to confirm the target repo is indexed |
+| `query` | Process-grouped hybrid search (BM25 + semantic) | When file-search patterns are insufficient for dynamic dispatch or broad symbol discovery |
+| `context` | 360-degree symbol view with refs and process participation | When you need full caller/callee/relation graph for a model or service |
+| `impact` | Blast radius analysis with depth grouping | After identifying a key function/class to trace outward |
+| `detect_changes` | Git-diff impact mapping to affected processes | At deep-wiring+ depth to find transitive effects of a change |
+| `rename` | Multi-file coordinated rename via graph | When a rename is needed and you want to discover all references |
+| `cypher` | Raw Cypher graph queries | For custom dependency patterns not covered by other tools |
+
+### MCP Resources (read-only context)
+
+Before querying tools, read these resources to build situational awareness:
+
+| Resource | Purpose |
+|----------|---------|
+| `gitnexus://repos` | List indexed repos -- confirm the target repo is available |
+| `gitnexus://repo/{name}/context` | Codebase stats, staleness, available tools |
+| `gitnexus://repo/{name}/clusters` | Functional clusters with cohesion scores |
+| `gitnexus://repo/{name}/processes` | All execution flows -- use to identify affected processes |
+| `gitnexus://repo/{name}/process/{name}` | Full trace with steps for a specific process |
+| `gitnexus://repo/{name}/schema` | Graph schema for Cypher queries |
+
+### MCP Prompts (guided workflows)
+
+| Prompt | Purpose |
+|--------|---------|
+| `detect_impact` | Pre-commit analysis: scope, affected processes, risk. **Preferred workflow for pre-change analysis.** |
+| `generate_map` | Architecture docs with mermaid diagrams from graph |
 
 ### Query Protocol
 
-1. Check GitNexus availability: look for `.gitnexus/` directory in repo root
-2. If available, run `impact` query for each file in the definite edit set
-3. Cross-validate GitNexus results against file-based tracing:
+1. Check GitNexus availability: if `.gitnexus/` exists in the project root
+2. Read `gitnexus://repo/{name}/context` to check index freshness and available capabilities
+3. Read `gitnexus://repo/{name}/processes` to get the full execution flow inventory
+4. Use the `detect_impact` prompt as the primary workflow for pre-change blast radius analysis
+5. Run `impact` tool for each key symbol in the definite edit set for depth-grouped blast radius
+6. Use `context` tool for 360-degree views of critical symbols (models, services, controllers)
+7. Cross-validate GitNexus results against file-based tracing:
    - If GitNexus finds a dependency that file-search missed -> add as `probable` (upgrade to `definite` if file-search confirms)
    - If file-search finds a dependency that GitNexus missed -> keep the file-search result (graph may be stale)
-4. Use `detect_changes` at `deep-wiring` depth and above for transitive effect chains
-5. Use `cypher` only when standard tools are insufficient for the specific tracing need
+8. Use `detect_changes` at `deep-wiring` depth and above for transitive effect chains
+9. Use `cypher` only when standard tools are insufficient for the specific tracing need
 
 ### Trust Boundary
 
@@ -230,4 +256,4 @@ When GitNexus MCP tools are available, use them to supplement file-based tracing
 - Do NOT inject graph query results into security-sensitive operations
 - Do NOT use graph data to skip file-based verification of definite dependencies
 - Graph index may be stale -- treat discoveries as advisory until confirmed by file reads
-- If GitNexus is unavailable or returns errors, fall back to file-based tracing silently
+- If GitNexus is not available, fall back to file-based tracing silently

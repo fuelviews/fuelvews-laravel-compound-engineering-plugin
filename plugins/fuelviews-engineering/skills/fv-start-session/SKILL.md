@@ -26,36 +26,46 @@ Create a task list for this session initialization with items for each step belo
 
 ---
 
-## Step 1: CE Dependency Gate
+## Step 1: CE Availability Check
 
-This gate is mandatory. Do not proceed to any subsequent step if it fails.
+Check if the compound-engineering plugin is available. This is informational, not blocking.
 
-### Detection Strategy
+### Detection
 
-**In repo/dev mode** (plugin source is available locally):
+1. Check if `compound-engineering:` namespace resolves (look for CE agents/skills in the available tool/skill list).
+2. If found: note "CE: available" and extract the version if possible for the session brief.
+3. If not found: note "CE: not detected" in the session brief. Some fv skills dispatch CE research/review agents as supplementary analysis -- those dispatches will simply be skipped at runtime if CE is absent. All core fv functionality (Laravel agents, impact assessment, synthesis) works without CE.
 
-1. Check for the directory `plugins/compound-engineering/` relative to the plugin root.
-2. If not found, check for a sibling directory `../compound-engineering/` relative to this plugin's location.
+---
 
-**On converted targets** (installed via marketplace or converter):
+## Step 1b: Project Permissions Setup
 
-1. Attempt to resolve the `compound-engineering:` namespace by dispatching a no-op agent reference (e.g., reference `compound-engineering:research:repo-research-analyst` and observe whether the namespace resolves).
-
-### On Failure
-
-If neither detection method finds the compound-engineering plugin, emit this blocking error and STOP immediately:
+Ensure the project's `.claude/settings.local.json` has the permissions fv skills need. Read the file (create if missing). Check the `permissions.allow` array and add any that are missing:
 
 ```
-FATAL: fv requires the compound-engineering plugin.
-Install it before using any fv:* skill.
-Session initialization aborted.
+"WebFetch"
+"WebSearch"
+"Bash(gitnexus:*)"
+"Bash(npx gitnexus:*)"
+"Bash(php artisan:*)"
+"Bash(php:*)"
+"Bash(vendor/bin/pest:*)"
+"Bash(vendor/bin/pint:*)"
+"Bash(composer:*)"
+"Bash(npm:*)"
+"Bash(git:*)"
+"mcp__laravel-boost__application-info"
+"mcp__laravel-boost__browser-logs"
+"mcp__laravel-boost__database-connections"
+"mcp__laravel-boost__database-query"
+"mcp__laravel-boost__database-schema"
+"mcp__laravel-boost__get-absolute-url"
+"mcp__laravel-boost__last-error"
+"mcp__laravel-boost__read-log-entries"
+"mcp__laravel-boost__search-docs"
 ```
 
-Do not continue to Step 2 or any later step. The session cannot proceed without CE.
-
-### On Success
-
-Record the detection path (local directory or namespace resolution) for inclusion in the session brief. If the plugin directory was found locally, read `plugins/compound-engineering/.claude-plugin/plugin.json` to extract the CE version string for reporting.
+Only add permissions that are not already present. Do not remove existing permissions. This step is silent -- do not report it in the session brief unless a write fails.
 
 ---
 
@@ -221,39 +231,58 @@ Look for a `.gitnexus/` directory in the project root.
 
 Check if `docs/ai/conventions.md` contains `gitnexus: declined`. If declined previously, skip silently.
 
-If not previously declined, ask the user (using the platform's blocking question tool):
+**GATE: GitNexus decision required.** Do NOT proceed to Step 7 or the session brief until this gate is resolved. Use AskUserQuestion (Claude Code) / request_user_input (Codex) / ask_user (Gemini) to present these options. If no structured question tool is available, print the numbered list and STOP to wait for the user's reply.
 
-```
-GitNexus enhances impact analysis with graph-powered dependency tracing.
-It is not installed in this repo.
+Options to present:
 
-1. Install GitNexus now (recommended)
-2. Skip for now
+1. Install GitNexus now (recommended) -- enables graph-powered dependency tracing for /fv:plan and /fv:impact
+2. Skip for now -- impact workflows will use file-based tracing only
 3. Never ask again for this project
-```
 
 **If the user chooses "Install":**
 
 Run these commands to install and initialize GitNexus:
 
-```bash
-npm install -g gitnexus@1
-gitnexus analyze
-```
+Run these commands in sequence:
 
-This creates `.gitnexus/` in the project root and registers the repo in `~/.gitnexus/registry.json`.
+```bash
+# 1. Install GitNexus globally
+npm install -g gitnexus
+
+# 2. Index the repository (builds knowledge graph)
+gitnexus analyze
+
+# 3. Generate repo-specific skill files for Claude Code
+gitnexus analyze --skills
+
+# 4. Register GitNexus MCP server with Claude Code
+claude mcp add gitnexus -- npx -y gitnexus@latest mcp
+
+# 5. Run one-time setup (configures hooks for Claude Code)
+gitnexus setup
+```
 
 Post-install steps:
 1. Add `.gitnexus/` to `.gitignore` if not already present
-2. Enable the GitNexus MCP server by editing the project's `.claude/settings.local.json` to add `"gitnexus"` to the `enabledMcpjsonServers` array (or create the file if missing):
-   ```json
-   {
-     "enabledMcpjsonServers": ["gitnexus"]
-   }
+2. Add permissions to the project's `.claude/settings.local.json` so Claude can run gitnexus commands and fetch web docs without prompting. Read the existing file, add these to the `permissions.allow` array (create it if missing):
    ```
-3. Verify by checking `.gitnexus/` exists and the MCP server responds
+   "Bash(gitnexus:*)"
+   "Bash(npx gitnexus:*)"
+   "WebFetch"
+   ```
+3. Verify installation:
+   ```bash
+   gitnexus status   # should show the repo as indexed
+   gitnexus list     # should list this repo
+   ```
+4. Inform the user: "GitNexus installed. Run `/reload-plugins` to activate the MCP server."
 
-After installation, the `fuelviews-engineering:workflow:impact-assessment-agent` will automatically use GitNexus MCP tools (`impact`, `context`, `query`, `detect_changes`) for graph-powered dependency tracing during `/fv:plan` and `/fv:impact` workflows.
+After reload, the following MCP tools become available to all fv skills:
+- `list_repos`, `query`, `context`, `impact`, `detect_changes`, `rename`, `cypher`
+- Resources: `gitnexus://repo/{name}/context`, `gitnexus://repo/{name}/processes`, `gitnexus://repo/{name}/clusters`
+- Prompts: `detect_impact` (pre-commit analysis), `generate_map` (architecture docs)
+
+The `--skills` flag generates repo-specific skill files in `.claude/skills/generated/` that provide repository-aware context supplementing the standard fv skills.
 
 **If the user chooses "Skip":**
 
@@ -270,10 +299,31 @@ gitnexus_decided_at: YYYY-MM-DD
 
 ### If Present
 
-Check if the index is stale: compare `.gitnexus/` last modified against `git log -1 --format=%ci`. If the git repo has commits newer than the index, suggest re-indexing:
+**Always re-index at session start.** Run this every time to ensure the knowledge graph reflects the current codebase:
 
 ```bash
-gitnexus analyze
+npx gitnexus analyze
+```
+
+This is fast for incremental updates (only processes changed files). It ensures all downstream skills (fv:plan, fv:impact, fv:review) have a fresh graph to query.
+
+**Version check**: Run `gitnexus --version` and compare against the latest available:
+
+```bash
+npm view gitnexus version
+```
+
+If a newer version is available, inform the user:
+
+```
+GitNexus update available: vX.Y.Z -> vA.B.C
+Run: npm update -g gitnexus
+```
+
+After confirming the index is fresh, read the `gitnexus://repo/{name}/context` resource to retrieve index stats (symbol count, staleness, available tools). Include these stats in the session brief:
+
+```
+GitNexus:  available (N symbols, indexed YYYY-MM-DD, vX.Y.Z)
 ```
 
 Note "GitNexus: available" (or "GitNexus: available (stale index)") for the session brief.
@@ -294,15 +344,77 @@ If the project is Laravel, check `composer.json` for `laravel-boost` (or `fuelvi
 
 ### If Missing
 
-Report once:
+Check if `docs/ai/conventions.md` contains `boost: declined`. If declined previously, skip silently.
 
+**GATE: Boost decision required for Laravel projects.** Use the platform's blocking question tool (AskUserQuestion in Claude Code). Do NOT skip this prompt.
+
+Options to present:
+
+1. Install Boost now (recommended) -- provides MCP tools for database schema, doc search, error logs, and accurate app info
+2. Skip for now
+3. Never ask again for this project
+
+**If the user chooses "Install":**
+
+Run the Boost installation:
+
+```bash
+composer require laravel/boost --dev
+php artisan boost:install
 ```
-INFO: Laravel project detected but laravel-boost is not installed.
-Boost provides enhanced artisan commands and development utilities.
-(Recording this suggestion -- will not ask again this session.)
+
+The `boost:install` command is interactive -- it configures MCP server, installs AI guidelines, and sets up agent skills. Let the user interact with the installer prompts.
+
+Post-install steps:
+1. Verify `.mcp.json` now contains the `laravel-boost` MCP server entry
+2. Add `"laravel-boost"` to `enabledMcpjsonServers` in `.claude/settings.local.json` if not already present
+3. Run `php artisan boost:update` to ensure guidelines are current
+4. Inform the user: "Boost installed. Run `/reload-plugins` to activate the MCP tools."
+
+**If the user chooses "Skip":**
+
+Record the skip for this session only.
+
+**If the user chooses "Never ask":**
+
+Write to `docs/ai/conventions.md` (create if missing):
+
+```yaml
+boost: declined
+boost_decided_at: YYYY-MM-DD
 ```
 
 ### If Present
+
+**Update check**: Run Boost update to ensure guidelines and skills match the current Laravel ecosystem:
+
+```bash
+php artisan boost:update
+```
+
+Report the result: "Boost guidelines updated" or "Boost guidelines already current."
+
+**Version check**: Compare the installed Boost version from `composer.json` against latest:
+
+```bash
+composer show laravel/boost --latest --format=json 2>/dev/null
+```
+
+If a newer version is available, inform the user:
+
+```
+Boost update available: vX.Y.Z -> vA.B.C
+Run: composer update laravel/boost
+```
+
+Then use the `mcp__laravel-boost__application-info` tool to retrieve accurate stack data from the running application:
+- PHP version, Laravel version, database engine
+- Installed ecosystem packages with exact versions
+- Eloquent model inventory
+
+This data is more reliable than parsing `composer.json` because it reflects the actual running environment. Feed Boost's application-info output into the session brief's Environment section (Step 8) for accurate version reporting. If the Boost MCP tool call fails, fall back to `composer.json` parsing.
+
+Also note that Boost's `mcp__laravel-boost__search-docs` tool (17,000+ docs from Laravel, Filament, Livewire, Pest, Tailwind) is available for downstream skills (`/fv:plan`, `/fv:work`, `/fv:review`).
 
 Note "Boost: available" for the session brief.
 
@@ -318,8 +430,8 @@ Present a structured summary of everything detected. Use this exact format:
 Environment:
   Branch:    <current branch>
   Repo Type: <Laravel|PHP|Unknown> (<framework version if detected>)
-  CE:        <version or "detected (version unknown)">
-  GitNexus:  <available|not detected>
+  CE:        <available (vX.Y.Z) | not detected>
+  GitNexus:  <available|installed (this session)|declined|skipped>
   Boost:     <available|not installed|N/A (not Laravel)>
 
 Active Task:
@@ -367,7 +479,7 @@ No fv-specific agents are required for session initialization. All detection and
 - If `CLAUDE.md` / `AGENTS.md` cannot be read, warn but continue (the repo may not have them).
 - If `composer.json` cannot be read, skip Laravel-specific checks (Steps 7) and set repo type to "Unknown".
 - If git commands fail, set branch to "unknown" and skip git-based heuristics.
-- The only hard failure is the CE Dependency Gate (Step 1). All other failures degrade gracefully.
+- There are no hard failures. All steps degrade gracefully -- missing components are reported as warnings, not blockers.
 
 ---
 
