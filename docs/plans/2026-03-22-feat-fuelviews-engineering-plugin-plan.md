@@ -771,8 +771,8 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 
 - [x] Plugin installs and appears in marketplace
 - [x] Plugin installs and appears in Cursor marketplace surfaces too
-- [x] All 8 skills execute their full pipelines
-- [x] Planning pipeline runs 9 phases (Setup/Loop/Finalize) with convergent review (max 4 rounds)
+- [x] All 9 skills execute their full pipelines (8 original + fv:brainstorm added)
+- [x] Planning pipeline runs 9 phases (Setup/Loop/Finalize) with user-driven convergent review (max 4 rounds, --auto for automated)
 - [x] Impact artifacts track discovery at 5 depth levels with 4 confidence categories
 - [x] Review pipeline runs with convergence and per-round impact
 - [x] Laravel-specific review agents fire mandatorily during plan and review
@@ -791,7 +791,7 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 - [x] All skill references use markdown links (not bare backticks)
 - [x] Skills name the platform's blocking question / task tool equivalents and include a numbered-list fallback when structured interaction is unavailable
 - [x] Any direct CE script dependency is wrapped behind an fv-owned contract and validated before runtime use
-- [x] Hooks are warn-first (except close-task gate)
+- [x] Plugin hooks emptied (global hooks caused errors; gate logic in skill-internal checks; GitNexus owns its hooks)
 - [x] Spatie/best-practices references under 500 lines each with concrete examples
 - [x] Templates produce valid YAML frontmatter
 
@@ -802,16 +802,16 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 - [x] All agent YAML frontmatter validates
 - [x] All SKILL.md frontmatter validates (correct name: with colon separator)
 - [x] fv SKILL content validation catches missing cross-platform interaction shells
-- [x] CE dependency detection covers repo/dev mode plus at least one converted target install surface
-- [x] fv dependency validation catches broken CE worktree-wrapper integration before runtime
-- [x] Plugin manifest matches component counts (10 agents, 8 skills)
+- [x] CE dependency is informational only (not blocking; all core fv functionality works without CE)
+- [x] fv worktree adapter contract documented with CE delegation and custom script support
+- [x] Plugin manifest matches component counts (10 agents, 9 skills)
 - [x] README.md reflects accurate inventory
 
 ## Dependencies & Prerequisites
 
 | Dependency | Type | Status | Required |
 |------------|------|--------|----------|
-| Compound Engineering plugin | Internal | Available (v2.49.0) | Yes - fv references CE agents |
+| Compound Engineering plugin | Internal | Available (v2.49.0) | No - supplementary; fv works without CE |
 | release-please config + manifest | Internal | Required by Phase 1 release infrastructure | Yes - fv must be a first-class release component |
 | GitNexus | External | MCP config in Phase 1, local `.gitnexus/` cache + deep integration in Phase 3a | No - graceful fallback |
 | Laravel Boost | External | Phase 3b | No - optional enhancement |
@@ -851,12 +851,14 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 - **laravel-security-reviewer**: Create fv-owned security agent if CE's security-sentinel proves insufficient for Laravel patterns
 - **Design agents**: Re-add Figma agents when design workflow is needed
 - **Repo separation**: fv and CE are coupled by co-location. Separating them would require a cross-plugin dependency resolver.
-- **AI model improvements**: As models get better context handling, some discovery work may simplify
 - **Static analysis integration**: Evaluate Larastan, ast-grep, nazonohito51/dependency-analyzer for deeper impact assessment
 - **Graph tool alternatives**: Adapter pattern for GitNexus means other tools could be swapped in
 - **Team collaboration**: Multi-user plan/review workflows
 - **CI integration**: Hooks that run impact assessment on PR creation
 - **Metrics dashboard**: Track planning accuracy, review convergence rates
+- **Plugin hooks rehabilitation**: Re-enable plugin hooks once Claude Code supports scoped hooks (only fire when plugin skills are active, not globally). Currently blocked by global hook execution.
+- **fv:plan-review as separate skill**: Currently review is an option within fv:plan post-generation. Could be extracted to a standalone skill.
+- **Automated regression testing**: Test that skills produce expected interactions (AskUserQuestion called, agents dispatched correctly) across Claude Code versions
 
 ## Documentation Plan
 
