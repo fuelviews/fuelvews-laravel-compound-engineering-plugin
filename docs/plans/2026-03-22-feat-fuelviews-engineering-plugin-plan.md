@@ -716,43 +716,43 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 
 ### Functional Requirements
 
-- [ ] Plugin installs and appears in marketplace
-- [ ] Plugin installs and appears in Cursor marketplace surfaces too
-- [ ] All 8 skills execute their full pipelines
-- [ ] Planning pipeline runs 9 phases (Setup/Loop/Finalize) with convergent review (max 4 rounds)
-- [ ] Impact artifacts track discovery at 5 depth levels with 4 confidence categories
-- [ ] Review pipeline runs with convergence and per-round impact
-- [ ] Laravel-specific review agents fire mandatorily during plan and review
-- [ ] Plan lifecycle manages all 7 statuses
-- [ ] Exclusions stored in plan frontmatter, not raised repeatedly
-- [ ] Repo layer scaffolded on first use (user prompted)
-- [ ] Session start hydrates full context from source-of-truth order
-- [ ] Close-task blocks on unresolved P1s or stale plan sync
-- [ ] CE's ce:compound works for knowledge capture until fv:compound is created
-- [ ] fuelviews-engineering.local.md configures per-project review panel
+- [x] Plugin installs and appears in marketplace
+- [x] Plugin installs and appears in Cursor marketplace surfaces too
+- [x] All 8 skills execute their full pipelines
+- [x] Planning pipeline runs 9 phases (Setup/Loop/Finalize) with convergent review (max 4 rounds)
+- [x] Impact artifacts track discovery at 5 depth levels with 4 confidence categories
+- [x] Review pipeline runs with convergence and per-round impact
+- [x] Laravel-specific review agents fire mandatorily during plan and review
+- [x] Plan lifecycle manages all 7 statuses
+- [x] Exclusions stored in plan frontmatter, not raised repeatedly
+- [x] Repo layer scaffolded on first use (user prompted)
+- [x] Session start hydrates full context from source-of-truth order
+- [x] Close-task blocks on unresolved P1s or stale plan sync
+- [x] CE's ce:compound works for knowledge capture until fv:compound is created
+- [x] fuelviews-engineering.local.md configures per-project review panel
 
 ### Non-Functional Requirements
 
-- [ ] New agent namespaces use `fuelviews-engineering:<category>:<name>` format
-- [ ] CE agents referenced via `compound-engineering:<category>:<name>` (not copied)
-- [ ] All skill references use markdown links (not bare backticks)
-- [ ] Skills name the platform's blocking question / task tool equivalents and include a numbered-list fallback when structured interaction is unavailable
-- [ ] Any direct CE script dependency is wrapped behind an fv-owned contract and validated before runtime use
-- [ ] Hooks are warn-first (except close-task gate)
-- [ ] Spatie/best-practices references under 500 lines each with concrete examples
-- [ ] Templates produce valid YAML frontmatter
+- [x] New agent namespaces use `fuelviews-engineering:<category>:<name>` format
+- [x] CE agents referenced via `compound-engineering:<category>:<name>` (not copied)
+- [x] All skill references use markdown links (not bare backticks)
+- [x] Skills name the platform's blocking question / task tool equivalents and include a numbered-list fallback when structured interaction is unavailable
+- [x] Any direct CE script dependency is wrapped behind an fv-owned contract and validated before runtime use
+- [x] Hooks are warn-first (except close-task gate)
+- [x] Spatie/best-practices references under 500 lines each with concrete examples
+- [x] Templates produce valid YAML frontmatter
 
 ### Quality Gates
 
-- [ ] `bun test` passes
-- [ ] `bun run release:validate` passes
-- [ ] All agent YAML frontmatter validates
-- [ ] All SKILL.md frontmatter validates (correct name: with colon separator)
-- [ ] fv SKILL content validation catches missing cross-platform interaction shells
-- [ ] CE dependency detection covers repo/dev mode plus at least one converted target install surface
-- [ ] fv dependency validation catches broken CE worktree-wrapper integration before runtime
-- [ ] Plugin manifest matches component counts (10 agents, 8 skills)
-- [ ] README.md reflects accurate inventory
+- [x] `bun test` passes
+- [x] `bun run release:validate` passes
+- [x] All agent YAML frontmatter validates
+- [x] All SKILL.md frontmatter validates (correct name: with colon separator)
+- [x] fv SKILL content validation catches missing cross-platform interaction shells
+- [x] CE dependency detection covers repo/dev mode plus at least one converted target install surface
+- [x] fv dependency validation catches broken CE worktree-wrapper integration before runtime
+- [x] Plugin manifest matches component counts (10 agents, 8 skills)
+- [x] README.md reflects accurate inventory
 
 ## Dependencies & Prerequisites
 
@@ -807,11 +807,11 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 
 ## Documentation Plan
 
-- [ ] Plugin README.md with full component inventory and usage guide
-- [ ] AGENTS.md with plugin development conventions (including skill naming convention)
-- [ ] Each skill's SKILL.md serves as its own documentation
-- [ ] Reference docs serve as agent knowledge base
-- [ ] Update root marketplace README if applicable
+- [x] Plugin README.md with full component inventory and usage guide
+- [x] AGENTS.md with plugin development conventions (including skill naming convention)
+- [x] Each skill's SKILL.md serves as its own documentation
+- [x] Reference docs serve as agent knowledge base
+- [x] Update root marketplace README if applicable
 
 ## References & Research
 
