@@ -383,10 +383,10 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 
 ##### 2.1 Active plan + impact artifact schemas
 
-- [ ] Finalize plan artifact schema with all frontmatter fields
-- [ ] Finalize impact artifact schema with depth levels and round tracking
-- [ ] Create plan index format with classification buckets
-- [ ] Document artifact lifecycle (draft -> in_review -> deepening -> locked -> implementing -> synced -> closed)
+- [x] Finalize plan artifact schema with all frontmatter fields
+- [x] Finalize impact artifact schema with depth levels and round tracking
+- [x] Create plan index format with classification buckets
+- [x] Document artifact lifecycle (draft -> in_review -> deepening -> locked -> implementing -> synced -> closed)
 
 ##### 2.2 /fv:plan (full planning pipeline)
 
@@ -407,105 +407,105 @@ The most complex skill. Includes deepening (no separate fv:deepen-plan skill). I
 **--- Setup (Phases 0-1) ---**
 
 **Phase 0: Task intake**
-- [ ] Normalize user request into task statement
-- [ ] Generate task slug
-- [ ] Load repo truth (source-of-truth order)
-- [ ] Detect repo layer presence; if missing, prompt: auto-scaffold or /fv:repo-catchup
-- [ ] Prompt: create worktree for this task? If yes, call the baseline worktree wrapper introduced in Phase 1.7
+- [x] Normalize user request into task statement
+- [x] Generate task slug
+- [x] Load repo truth (source-of-truth order)
+- [x] Detect repo layer presence; if missing, prompt: auto-scaffold or /fv:repo-catchup
+- [x] Prompt: create worktree for this task? If yes, call the baseline worktree wrapper introduced in Phase 1.7
 
 **Phase 1: Initial impact (round 0)**
-- [ ] Launch fuelviews-engineering:workflow:impact-assessment-agent with task description
-- [ ] Broad structural discovery: routes, controllers, models, Livewire, Filament, policies, jobs
-- [ ] Query GitNexus MCP tools for dependency graph (if available)
-- [ ] Classify findings: definite/probable/possible/blind spot
-- [ ] Write initial impact artifact (round 0, depth: broad)
+- [x] Launch fuelviews-engineering:workflow:impact-assessment-agent with task description
+- [x] Broad structural discovery: routes, controllers, models, Livewire, Filament, policies, jobs
+- [x] Query GitNexus MCP tools for dependency graph (if available)
+- [x] Classify findings: definite/probable/possible/blind spot
+- [x] Write initial impact artifact (round 0, depth: broad)
 
 **--- Convergent Loop (Phases 2-6) ---**
 
 **Phase 2: Plan v1**
-- [ ] Run compound-engineering:research:repo-research-analyst + compound-engineering:research:learnings-researcher in parallel
-- [ ] Conditionally run compound-engineering:research:best-practices-researcher + compound-engineering:research:framework-docs-researcher
-- [ ] Generate plan v1 using impact seed data + research findings
-- [ ] Write plan artifact (status: draft)
+- [x] Run compound-engineering:research:repo-research-analyst + compound-engineering:research:learnings-researcher in parallel
+- [x] Conditionally run compound-engineering:research:best-practices-researcher + compound-engineering:research:framework-docs-researcher
+- [x] Generate plan v1 using impact seed data + research findings
+- [x] Write plan artifact (status: draft)
 
 **Phase 3: Plan review round 1**
-- [ ] Launch review panel in parallel (curated subset for planning):
+- [x] Launch review panel in parallel (curated subset for planning):
   - compound-engineering:review:architecture-strategist
   - fuelviews-engineering:review:laravel-reviewer
   - compound-engineering:review:security-sentinel
   - compound-engineering:review:code-simplicity-reviewer
-- [ ] Collect P1-P3 findings
-- [ ] Launch fuelviews-engineering:workflow:synthesis-agent to dedupe and prioritize
+- [x] Collect P1-P3 findings
+- [x] Launch fuelviews-engineering:workflow:synthesis-agent to dedupe and prioritize
 
 **Phase 4: Impact assessment round 1**
-- [ ] Launch impact-assessment-agent with plan v1 + review findings
-- [ ] Plan-aware dependency discovery (depth: plan-aware)
-- [ ] Update impact artifact (round 1)
-- [ ] Feed plan deltas back
+- [x] Launch impact-assessment-agent with plan v1 + review findings
+- [x] Plan-aware dependency discovery (depth: plan-aware)
+- [x] Update impact artifact (round 1)
+- [x] Feed plan deltas back
 
 **Phase 5: Deepen-plan (integrated, max 2 rounds)**
-- [ ] Run deepen pass 1 (mandatory after round 1 review + impact)
+- [x] Run deepen pass 1 (mandatory after round 1 review + impact)
   - Stress-test assumptions against impact findings
   - Compare alternate approaches
   - Explore hidden risk and simplification opportunities
   - Update plan with deepened sections
-- [ ] Track `deepen_count` and `pipeline_phase` in plan state (increment after each pass)
-- [ ] Deepen pass 2 is optional: triggers after round 2 if material new scope/domain entered
+- [x] Track `deepen_count` and `pipeline_phase` in plan state (increment after each pass)
+- [x] Deepen pass 2 is optional: triggers after round 2 if material new scope/domain entered
 
 **Phase 6: Review rounds 2-4 (convergent loop)**
-- [ ] For each round (max 4 total):
+- [x] For each round (max 4 total):
   - Run review panel
   - Run impact assessment (deeper each round)
   - After round 2: if material new scope discovered AND `deepen_count < 2`, run deepen pass 2 before round 3
   - Check convergence: no new actionable P1-P3? Stop early
   - Check re-run conditions: material plan change, new domain/module, new side-effect path
   - Update plan incrementally
-- [ ] Track `pipeline_phase`, `review_rounds_completed`, `convergence_round`, and `deepen_count` in plan frontmatter
+- [x] Track `pipeline_phase`, `review_rounds_completed`, `convergence_round`, and `deepen_count` in plan frontmatter
 
 **--- Finalize (Phases 7-8) ---**
 
 **Phase 7: Finalized-plan deepest impact**
-- [ ] Run impact-assessment-agent at depth: contract-validation
-- [ ] Verify final implementation contract
-- [ ] Write final impact artifact
+- [x] Run impact-assessment-agent at depth: contract-validation
+- [x] Verify final implementation contract
+- [x] Write final impact artifact
 
 **Phase 8: Plan lock**
-- [ ] Set plan status to `locked`
-- [ ] Set `locked_at` timestamp
-- [ ] Write final watchlist and blind spots
-- [ ] Update docs/plans/_index.md
-- [ ] Update docs/ai/current-work.md
+- [x] Set plan status to `locked`
+- [x] Set `locked_at` timestamp
+- [x] Write final watchlist and blind spots
+- [x] Update docs/plans/_index.md
+- [x] Update docs/ai/current-work.md
 
 ##### 2.3 /fv:impact (standalone diagnostic)
 
-- [ ] Accept task slug or plan path
-- [ ] Run fuelviews-engineering:workflow:impact-assessment-agent at specified or auto-detected depth
-- [ ] Output impact artifact without modifying plan
-- [ ] Useful for: debugging scope, checking drift, comparing approaches
+- [x] Accept task slug or plan path
+- [x] Run fuelviews-engineering:workflow:impact-assessment-agent at specified or auto-detected depth
+- [x] Output impact artifact without modifying plan
+- [x] Useful for: debugging scope, checking drift, comparing approaches
 
 ##### 2.4 /fv:work (implementation execution)
 
 Fork CE's ce:work with fv additions:
 
-- [ ] Read locked plan and latest impact artifact
-- [ ] Verify plan status is `locked`
-- [ ] Phase 1: Quick start (read plan, clarify, set up environment, create task list)
-- [ ] Phase 2: Execute (task loop with incremental commits)
+- [x] Read locked plan and latest impact artifact
+- [x] Verify plan status is `locked`
+- [x] Phase 1: Quick start (read plan, clarify, set up environment, create task list)
+- [x] Phase 2: Execute (task loop with incremental commits)
   - Monitor for material drift from plan
   - If scope expands, trigger impact delta
   - Conventional commit messages
-- [ ] Phase 3: Quality check
+- [x] Phase 3: Quality check
   - Run fv Laravel review agents (php, laravel, blade, js, postgresql as applicable)
   - Run compound-engineering:review:code-simplicity-reviewer
   - System-wide test check
-- [ ] Phase 4: Ship (commit, PR, update plan status to `implementing`)
-- [ ] Branch strategy follows user's git workflow (create from dev, conventional naming)
+- [x] Phase 4: Ship (commit, PR, update plan status to `implementing`)
+- [x] Branch strategy follows user's git workflow (create from dev, conventional naming)
 
 ##### 2.5 /fv:review (convergent code review)
 
-- [ ] Load review agent panel from `fuelviews-engineering.local.md` or use defaults
-- [ ] Max 4 review rounds with convergence
-- [ ] Each round:
+- [x] Load review agent panel from `fuelviews-engineering.local.md` or use defaults
+- [x] Max 4 review rounds with convergence
+- [x] Each round:
   1. Inspect diff against plan + impact artifact
   2. Launch review agents (parallel for <=5, serial for 6+)
   3. Run fv Laravel agents mandatorily
@@ -515,9 +515,9 @@ Fork CE's ce:work with fv additions:
   7. Run impact assessment for newly touched areas
   8. Launch synthesis-agent to dedupe and prioritize
   9. Update plan if implementation drifted
-- [ ] Convergence: stop when no new actionable findings
-- [ ] Output: resolved findings, excluded findings, plan deltas, impact misses
-- [ ] P1 findings block merge
+- [x] Convergence: stop when no new actionable findings
+- [x] Output: resolved findings, excluded findings, plan deltas, impact misses
+- [x] P1 findings block merge
 
 ### Research Insights (Phases 2.4-2.5)
 
@@ -533,53 +533,53 @@ Fork CE's ce:work with fv additions:
 
 ##### 2.6 /fv:plan-sync
 
-- [ ] Compare plan artifact against actual implementation
-- [ ] Update plan sections that drifted during work/review
-- [ ] Sync plan index (docs/plans/_index.md)
-- [ ] Update docs/ai/current-work.md
-- [ ] Update docs/handoffs/latest.md
-- [ ] Set plan status to `synced`
+- [x] Compare plan artifact against actual implementation
+- [x] Update plan sections that drifted during work/review
+- [x] Sync plan index (docs/plans/_index.md)
+- [x] Update docs/ai/current-work.md
+- [x] Update docs/handoffs/latest.md
+- [x] Set plan status to `synced`
 
 ##### 2.7 /fv:start-session
 
-- [ ] **Hard-fail if CE not detected**: Resolve Compound Engineering through a target-aware dependency check. In repo/dev mode, source-tree presence is acceptable; on converted targets, verify the known install surface or namespace resolution for the current platform. If unresolved, emit blocking error: "fv requires the compound-engineering plugin." Do not proceed to any fv skill.
-- [ ] Read repo truth in canonical source-of-truth order (all 11 levels, canonical path: `docs/plans/_index.md`)
-- [ ] After locating the active repo-layer context, hydrate repo-layer files using the Appendix A.7 subset order. This subset refines repo-layer reads only; it does not replace the canonical source-of-truth order.
-- [ ] Detect repo layer health (missing docs/ai/? Missing docs/plans/_index.md?)
-- [ ] Identify active task/plan if any
-- [ ] Check reference freshness (date-fetched timestamps on Spatie/best-practices refs)
-- [ ] Check GitNexus availability; if missing, recommend + offer install (record decision)
-- [ ] Check Boost availability; if missing in Laravel repo, suggest once (record decision)
-- [ ] Output: session brief, warnings, recommended next command
+- [x] **Hard-fail if CE not detected**: Resolve Compound Engineering through a target-aware dependency check. In repo/dev mode, source-tree presence is acceptable; on converted targets, verify the known install surface or namespace resolution for the current platform. If unresolved, emit blocking error: "fv requires the compound-engineering plugin." Do not proceed to any fv skill.
+- [x] Read repo truth in canonical source-of-truth order (all 11 levels, canonical path: `docs/plans/_index.md`)
+- [x] After locating the active repo-layer context, hydrate repo-layer files using the Appendix A.7 subset order. This subset refines repo-layer reads only; it does not replace the canonical source-of-truth order.
+- [x] Detect repo layer health (missing docs/ai/? Missing docs/plans/_index.md?)
+- [x] Identify active task/plan if any
+- [x] Check reference freshness (date-fetched timestamps on Spatie/best-practices refs)
+- [x] Check GitNexus availability; if missing, recommend + offer install (record decision)
+- [x] Check Boost availability; if missing in Laravel repo, suggest once (record decision)
+- [x] Output: session brief, warnings, recommended next command
 
 ##### 2.8 /fv:close-task
 
-- [ ] **Blocking gate** (both skill-internal logic AND hook enforcement): refuse to close if:
+- [x] **Blocking gate** (both skill-internal logic AND hook enforcement): refuse to close if:
   - Plan not synced (status != synced)
   - Unresolved P1 findings exist
   - Handoff not updated
-- [ ] **Hook-based enforcement** (in Phase 2, not deferred to 3a): Use the baseline hook scaffold from Phase 1.7 to enforce a close-task hook that independently verifies conditions by reading plan frontmatter and review artifacts, not trusting skill self-report
-- [ ] Verify plan sync completed
-- [ ] Verify current-work.md updated
-- [ ] Verify handoff freshness
-- [ ] Summarize: what changed, next prompt, next likely step
-- [ ] Suggest worktree cleanup/archive if applicable
-- [ ] Set plan status to `closed`
+- [x] **Hook-based enforcement** (in Phase 2, not deferred to 3a): Use the baseline hook scaffold from Phase 1.7 to enforce a close-task hook that independently verifies conditions by reading plan frontmatter and review artifacts, not trusting skill self-report
+- [x] Verify plan sync completed
+- [x] Verify current-work.md updated
+- [x] Verify handoff freshness
+- [x] Summarize: what changed, next prompt, next likely step
+- [x] Suggest worktree cleanup/archive if applicable
+- [x] Set plan status to `closed`
 
 ##### 2.9 /fv:repo-catchup (see Appendix A.8 for classification algorithms)
 
-- [ ] Scan repo structure and existing docs/plans
-- [ ] Create/refresh docs/ai/* (architecture, conventions, repo-map, current-work)
-- [ ] Create/refresh docs/plans/_index.md
-- [ ] Classify existing plans: current, historical, superseded, abandoned, dead
-- [ ] Add frontmatter to legacy plans (title, status, created_at, last_verified_at, canonical, superseded_by)
-- [ ] Move superseded/dead plans to docs/plans/archive/
-- [ ] Infer likely current work
-- [ ] Identify risky legacy zones
-- [ ] Mark human-confirmation gaps (flag uncertainty, don't invent truth)
-- [ ] Run periodic repo-doc verification against code reality for `docs/ai/*` and `docs/plans/_index.md` as part of catch-up/refresh work. This owns doc verification; no separate `/fv:verify-docs` command is planned.
-- [ ] Detect Laravel: check for Boost, suggest if appropriate
-- [ ] Detect GitNexus: recommend if not present
+- [x] Scan repo structure and existing docs/plans
+- [x] Create/refresh docs/ai/* (architecture, conventions, repo-map, current-work)
+- [x] Create/refresh docs/plans/_index.md
+- [x] Classify existing plans: current, historical, superseded, abandoned, dead
+- [x] Add frontmatter to legacy plans (title, status, created_at, last_verified_at, canonical, superseded_by)
+- [x] Move superseded/dead plans to docs/plans/archive/
+- [x] Infer likely current work
+- [x] Identify risky legacy zones
+- [x] Mark human-confirmation gaps (flag uncertainty, don't invent truth)
+- [x] Run periodic repo-doc verification against code reality for `docs/ai/*` and `docs/plans/_index.md` as part of catch-up/refresh work. This owns doc verification; no separate `/fv:verify-docs` command is planned.
+- [x] Detect Laravel: check for Boost, suggest if appropriate
+- [x] Detect GitNexus: recommend if not present
 
 ### Research Insights (Phase 2.9)
 
@@ -592,18 +592,18 @@ Fork CE's ce:work with fv additions:
 Use CE's `ce:compound` skill directly (writes to docs/solutions/ with same format). Create fv-specific version only when fv-specific changes are needed.
 
 **Phase 2 success criteria:**
-- [ ] All 8 skills are fully functional
-- [ ] Planning pipeline runs all 9 phases (organized as Setup/Loop/Finalize) with convergence
-- [ ] Review pipeline runs with max 4 rounds and convergence
-- [ ] Impact artifacts track round-over-round depth
-- [ ] Exclusions stored structurally in plan frontmatter
-- [ ] Plan lifecycle works: draft -> in_review -> deepening -> locked -> implementing -> synced -> closed
-- [ ] /fv:close-task blocks on unresolved P1s or stale plan (skill-internal + hook enforcement)
-- [ ] Close-task hook independently verifies conditions (not trusting skill self-report)
-- [ ] Synthesis-agent runs in both fv:plan and fv:review pipelines
-- [ ] fv:start-session hard-fails if the CE dependency cannot be resolved on the current platform
-- [ ] Frontmatter validation rejects out-of-order status transitions
-- [ ] All documented `/fv:*` entrypoints map to planned skills or explicitly documented modes of existing skills
+- [x] All 8 skills are fully functional
+- [x] Planning pipeline runs all 9 phases (organized as Setup/Loop/Finalize) with convergence
+- [x] Review pipeline runs with max 4 rounds and convergence
+- [x] Impact artifacts track round-over-round depth
+- [x] Exclusions stored structurally in plan frontmatter
+- [x] Plan lifecycle works: draft -> in_review -> deepening -> locked -> implementing -> synced -> closed
+- [x] /fv:close-task blocks on unresolved P1s or stale plan (skill-internal + hook enforcement)
+- [x] Close-task hook independently verifies conditions (not trusting skill self-report)
+- [x] Synthesis-agent runs in both fv:plan and fv:review pipelines
+- [x] fv:start-session hard-fails if the CE dependency cannot be resolved on the current platform
+- [x] Frontmatter validation rejects out-of-order status transitions
+- [x] All documented `/fv:*` entrypoints map to planned skills or explicitly documented modes of existing skills
 
 ---
 
