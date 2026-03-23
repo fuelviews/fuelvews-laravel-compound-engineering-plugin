@@ -4,7 +4,7 @@ type: feat
 date: 2026-03-22
 origin: docs/brainstorms/2026-03-22-fuelviews-engineering-plugin-brainstorm.md
 master_plan: MASTER-PLAN.md
-review_round: 4
+review_round: 5
 review_findings_applied: true
 deepened: true
 deepened_date: 2026-03-22
@@ -54,9 +54,9 @@ CE is a mature multi-agent workflow but lacks:
 
 Fork CE's workflow skills with fv-specific enhancements, organized into four implementation phases:
 
-- **Phase 1: Scaffold and Baseline** - Plugin structure, artifact schemas, templates, Spatie references, new agents
+- **Phase 1: Scaffold and Baseline** - Plugin structure, artifact schemas, templates, baseline workflow infrastructure, Spatie references, new agents
 - **Phase 2: Workflow Intelligence** - All 8 skills with full planning/review/impact pipelines
-- **Phase 3a: Core Hardening** - GitNexus deep integration, worktree adapter, hook enforcement, improved synthesis
+- **Phase 3a: Core Hardening** - GitNexus deep integration, hook/worktree hardening, improved synthesis
 - **Phase 3b: Extended Hardening** - Multi-repo orchestration, Boost awareness, deeper repo archaeology
 
 ## Technical Approach
@@ -98,6 +98,8 @@ plugins/fuelviews-engineering/
     laravel-best-practices.md      # Distilled alexeymezenin/laravel-best-practices
     impact-depth-guide.md          # Impact assessment depth per round
     convergence-rules.md           # Planning/review convergence logic
+    convergent-planning-loop.md    # /fv:plan convergent loop orchestration
+    plan-finalization.md           # /fv:plan finalization and lock flow
     severity-policy.md             # P1/P2/P3 definitions and exclusion rules
     source-of-truth-order.md       # Canonical trust hierarchy
   AGENTS.md
@@ -240,8 +242,10 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 - [ ] Add fv component routing and version loading in `src/release/components.ts` (`RELEASE_COMPONENTS`, `FILE_COMPONENT_MAP`, `SCOPES_TO_COMPONENTS`, `loadCurrentVersions()`)
 - [ ] Add fv paths to `syncReleaseMetadata()` in `scripts/release/validate.ts`
 - [ ] Add fv entries to `.github/release-please-config.json` and `.github/.release-please-manifest.json` when wiring the new release component
+- [ ] If the implementation branch lacks the root release-please config/manifests, create/reconcile them before relying on `bun run release:validate`
 - [ ] Validate every CE dependency fv calls directly, not only agents: agent namespaces plus the CE `git-worktree` manager script path and required subcommands / contract
 - [ ] Add cross-plugin agent reference validation: parse fv SKILL.md files for `compound-engineering:*` references and verify each resolves to an actual agent file under `plugins/compound-engineering/agents/`
+- [ ] Add target-aware CE dependency validation coverage for both repo/dev mode and at least one converted target install surface
 - [ ] Add generic plugin content validation: YAML frontmatter format for agents, `name:` frontmatter for skills
 - [ ] Extend `tests/release-components.test.ts`, `tests/release-preview.test.ts`, and `tests/release-metadata.test.ts` for fv-specific component detection, previewing, and metadata drift
 - [ ] Verify `bun run release:validate` catches fv-specific issues (not just CE). Script must check both CE and fv independently, reporting per-plugin counts and drift. Drift in either plugin fails validation.
@@ -265,7 +269,7 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 - [ ] Create `.cursor-plugin/plugin.json` manifest matching the existing repo plugin surfaces
 - [ ] Create `AGENTS.md` with fv-specific plugin development rules and skill naming convention
 - [ ] Create `CLAUDE.md` shim referencing AGENTS.md
-- [ ] Create `README.md` with component inventory (10 agents, 8 skills, 9 references, 6 templates)
+- [ ] Create `README.md` with component inventory (10 agents, 8 skills, 11 references, 6 templates)
 - [ ] Update `.claude-plugin/marketplace.json` to register fv plugin
 - [ ] Treat Cursor as fully in scope for this feature: if root `.cursor-plugin/marketplace.json` is absent on the implementation branch, create/reconcile it first, then register fv there as part of the same change set
 - [ ] Reconcile MASTER-PLAN.md: naming (`/fv-plan` -> `/fv:plan`), paths (`plans/active/` -> `docs/plans/`), frontmatter schema (`converged` -> removed, `excluded_improvements` -> `excluded_findings`, add `task_slug`/`locked_at`/`deepening` status), mark `/fv-compound` as deferred
@@ -312,6 +316,8 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 
 - [ ] `references/impact-depth-guide.md` - Impact assessment depth per round (0-4)
 - [ ] `references/convergence-rules.md` - Planning/review stop conditions, re-run conditions, max rounds
+- [ ] `references/convergent-planning-loop.md` - /fv:plan loop orchestration and context-budget handoff
+- [ ] `references/plan-finalization.md` - /fv:plan finalization, lock, and post-pipeline options
 - [ ] `references/severity-policy.md` - P1/P2/P3 definitions, exclusion handling, structural storage
 - [ ] `references/source-of-truth-order.md` - Canonical trust hierarchy (11 levels)
 
@@ -337,6 +343,15 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 - [ ] Each fv SKILL shell includes an explicit "Interaction Method" / equivalent section naming blocking question + task tool equivalents and the numbered-list fallback
 - [ ] Add a validation/test pass that checks fv SKILL shells for this cross-platform interaction guidance, not just frontmatter
 
+##### 1.7 Baseline workflow infrastructure
+
+- [ ] Create `hooks/hooks.json` with the baseline close-task gate plus warn-first placeholders for session/review/plan-sync checks so Phase 2 skills depend on a real hook surface
+- [ ] Implement an fv-owned worktree wrapper / adapter entrypoint before Phase 2 so `/fv:plan`, `/fv:work`, and `/fv:close-task` can call a stable contract
+- [ ] Define a two-layer worktree contract: delegated CE verbs `create(taskSlug, branchType)`, `list()`, `switch(name)`, `copyEnv(name?)`, `cleanup()` plus wrapper-owned helpers like `active()`
+- [ ] Treat targeted `remove(name)` as optional wrapper-owned behavior for custom backends, not as a CE delegated verb
+- [ ] Validate the delegated CE script contract during fv validation (path exists, required delegated verbs available)
+- [ ] Support repo/dev mode and converted-target mode when resolving CE presence for the baseline dependency gate
+
 > **Implementation detail:** MCP config formats, all 13 hook events, hooks.json format, and release infrastructure extension steps are in Appendix A.4. Key learnings: routine PRs should NOT cut releases (docs/solutions/plugin-versioning-requirements.md), use `-beta` suffix for experimental skills (docs/solutions/skill-design/beta-skills-framework.md).
 
 > **MCP config decision:** Use both `plugin.json` `mcpServers` key AND `.mcp.json` at plugin root (following CE's actual pattern). `.mcp.json` handles API key headers via env vars that `plugin.json` cannot express.
@@ -357,6 +372,7 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 - [ ] Plugin appears in marketplace.json
 - [ ] Plugin appears in Cursor marketplace metadata too, with root Cursor marketplace surface created/reconciled if missing
 - [ ] References are under 500 lines each with concrete examples
+- [ ] Baseline hooks and worktree wrapper exist before Phase 2 skills depend on them
 - [ ] GitNexus MCP configured in plugin.json mcpServers
 
 ---
@@ -376,7 +392,7 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 
 The most complex skill. Includes deepening (no separate fv:deepen-plan skill). Internal phases organized into three groups.
 
-**Execution model:** Single invocation runs all phases 0-8. The convergent loop (phases 2-6) iterates within the same session. Phase 5 (deepen) runs up to 2 times maximum -- once after round 1, and optionally again after round 2 if significant new scope was discovered. To mitigate context window exhaustion from cumulative agent outputs, extract the convergent loop logic into `references/convergent-planning-loop.md` and finalization into `references/plan-finalization.md`. The SKILL.md itself orchestrates and links to references.
+**Execution model:** Single invocation runs all phases 0-8. The convergent loop (phases 2-6) iterates within the same session. Phase 5 (deepen) runs up to 2 times maximum -- once after round 1, and optionally again after round 2 if significant new scope was discovered. To mitigate context window exhaustion from cumulative agent outputs, extract the convergent loop logic into `references/convergent-planning-loop.md` and finalization into `references/plan-finalization.md`. These files are scaffolded in Phase 1.4 and counted as part of the plugin reference inventory. The SKILL.md itself orchestrates and links to references.
 
 **Agent scope boundaries for Eloquent overlap:** `laravel-reviewer` owns architectural layering (fat models, wrong layer). `laravel-conventions-reviewer` owns naming and structural conventions. `laravel-performance-reviewer` owns runtime characteristics (N+1, eager loading). Each agent's AGENT.md must define explicit scope boundaries.
 
@@ -395,7 +411,7 @@ The most complex skill. Includes deepening (no separate fv:deepen-plan skill). I
 - [ ] Generate task slug
 - [ ] Load repo truth (source-of-truth order)
 - [ ] Detect repo layer presence; if missing, prompt: auto-scaffold or /fv:repo-catchup
-- [ ] Prompt: create worktree for this task? If yes, call worktree adapter
+- [ ] Prompt: create worktree for this task? If yes, call the baseline worktree wrapper introduced in Phase 1.7
 
 **Phase 1: Initial impact (round 0)**
 - [ ] Launch fuelviews-engineering:workflow:impact-assessment-agent with task description
@@ -526,7 +542,7 @@ Fork CE's ce:work with fv additions:
 
 ##### 2.7 /fv:start-session
 
-- [ ] **Hard-fail if CE not detected**: Check for compound-engineering plugin presence (look for key CE agent files). If missing, emit blocking error: "fv requires the compound-engineering plugin." Do not proceed to any fv skill.
+- [ ] **Hard-fail if CE not detected**: Resolve Compound Engineering through a target-aware dependency check. In repo/dev mode, source-tree presence is acceptable; on converted targets, verify the known install surface or namespace resolution for the current platform. If unresolved, emit blocking error: "fv requires the compound-engineering plugin." Do not proceed to any fv skill.
 - [ ] Read repo truth in canonical source-of-truth order (all 11 levels, canonical path: `docs/plans/_index.md`)
 - [ ] After locating the active repo-layer context, hydrate repo-layer files using the Appendix A.7 subset order. This subset refines repo-layer reads only; it does not replace the canonical source-of-truth order.
 - [ ] Detect repo layer health (missing docs/ai/? Missing docs/plans/_index.md?)
@@ -542,7 +558,7 @@ Fork CE's ce:work with fv additions:
   - Plan not synced (status != synced)
   - Unresolved P1 findings exist
   - Handoff not updated
-- [ ] **Hook-based enforcement** (in Phase 2, not deferred to 3a): Create a close-task hook that independently verifies conditions by reading plan frontmatter and review artifacts, not trusting skill self-report
+- [ ] **Hook-based enforcement** (in Phase 2, not deferred to 3a): Use the baseline hook scaffold from Phase 1.7 to enforce a close-task hook that independently verifies conditions by reading plan frontmatter and review artifacts, not trusting skill self-report
 - [ ] Verify plan sync completed
 - [ ] Verify current-work.md updated
 - [ ] Verify handoff freshness
@@ -585,7 +601,7 @@ Use CE's `ce:compound` skill directly (writes to docs/solutions/ with same forma
 - [ ] /fv:close-task blocks on unresolved P1s or stale plan (skill-internal + hook enforcement)
 - [ ] Close-task hook independently verifies conditions (not trusting skill self-report)
 - [ ] Synthesis-agent runs in both fv:plan and fv:review pipelines
-- [ ] fv:start-session hard-fails if CE plugin not detected
+- [ ] fv:start-session hard-fails if the CE dependency cannot be resolved on the current platform
 - [ ] Frontmatter validation rejects out-of-order status transitions
 - [ ] All documented `/fv:*` entrypoints map to planned skills or explicitly documented modes of existing skills
 
@@ -615,21 +631,21 @@ Use CE's `ce:compound` skill directly (writes to docs/solutions/ with same forma
 - Assume Claude Code has the deepest hook integration; other editors may get MCP plus skills without equivalent hook depth.
 - Keep fv working when GitNexus is absent or stale by falling back to repo reads and structural search.
 
-##### 3a.2 Hook enforcement
+##### 3a.2 Hook hardening
 
-Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
+Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task hook is Phase 2, see 2.8):
 
 - [ ] **SessionStart hook**: Check repo memory exists, active plan matches current-work.md, recommend catch-up if needed
 - [ ] **Workflow boundary warnings** (PostToolUse-style checks): At /fv:review, /fv:plan-sync - warn if plan/impact/handoff are stale relative to code changes. These are distinct from the PreToolUse enrichment hooks in 3a.1.
 - [ ] All hooks warn-first (close-task blocking gate is in Phase 2)
 
-##### 3a.3 Worktree adapter
+##### 3a.3 Worktree adapter hardening
 
-- [ ] Define adapter contract: create(taskSlug, branchType), list(), switch(name), remove(name), active()
+- [ ] Harden the existing wrapper contract: delegated CE verbs are `create(taskSlug, branchType)`, `list()`, `switch(name)`, `copyEnv(name?)`, `cleanup()`, while `active()` is a wrapper-owned helper derived from `git worktree list --porcelain`
 - [ ] **Slug sanitization:** Validate task slugs match `^[a-z0-9][a-z0-9-]{0,78}[a-z0-9]$` before passing to any shell operation. Use array-based command execution (not string interpolation).
-- [ ] Implement an fv-owned wrapper / adapter entrypoint that delegates to CE's `git-worktree` manager by default, so fv calls a stable local contract instead of CE internals directly
-- [ ] Validate the delegated CE script contract during fv validation (path exists, required verbs available); fail fast if CE changes break the wrapper
-- [ ] Wrap user's custom shell scripts (create, list, switch, remove)
+- [ ] Extend the fv-owned wrapper / adapter entrypoint so fv calls a stable local contract instead of CE internals directly
+- [ ] Validate the delegated CE script contract during fv validation (path exists, required delegated verbs available); fail fast if CE changes break the wrapper
+- [ ] Wrap user's custom shell scripts (create, list, switch, cleanup, optional remove) behind the same fv contract
 - [ ] /fv:plan prompts for worktree creation, records choice in plan artifact
 - [ ] /fv:work verifies correct worktree context
 - [ ] /fv:close-task suggests worktree cleanup/archive
@@ -641,7 +657,7 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 
 **Adapter behavior:** Use `git worktree list --porcelain` for machine-readable discovery, and account for `lock`, `prune`, `remove`, and `repair` semantics so deleted or moved worktrees do not leave stale administrative state behind.
 
-**Compatibility rule:** The wrapper is the only surface fv skills call. If CE renames/moves its manager script or changes its CLI, the wrapper or its validator absorbs that breakage before runtime use.
+**Compatibility rule:** The wrapper is the only surface fv skills call. Validate delegated CE verbs only (`create`, `list`, `switch`, `copy-env`, `cleanup`); wrapper-owned helpers like `active()` remain fv implementation details. If CE renames/moves its manager script or changes its CLI, the wrapper or its validator absorbs that breakage before runtime use.
 
 ##### 3a.4 Improved synthesis and watchlists
 
@@ -733,6 +749,7 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 - [ ] All agent YAML frontmatter validates
 - [ ] All SKILL.md frontmatter validates (correct name: with colon separator)
 - [ ] fv SKILL content validation catches missing cross-platform interaction shells
+- [ ] CE dependency detection covers repo/dev mode plus at least one converted target install surface
 - [ ] fv dependency validation catches broken CE worktree-wrapper integration before runtime
 - [ ] Plugin manifest matches component counts (10 agents, 8 skills)
 - [ ] README.md reflects accurate inventory
@@ -745,7 +762,7 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | release-please config + manifest | Internal | Required by Phase 1 release infrastructure | Yes - fv must be a first-class release component |
 | GitNexus | External | MCP config in Phase 1, local `.gitnexus/` cache + deep integration in Phase 3a | No - graceful fallback |
 | Laravel Boost | External | Phase 3b | No - optional enhancement |
-| CE git-worktree manager behind fv wrapper / compatible custom scripts | Internal / External | Phase 3a | No - fv works without worktrees |
+| CE git-worktree manager behind fv wrapper / compatible custom scripts | Internal / External | Baseline in Phase 1.7, hardening in Phase 3a | No - fv works without worktrees |
 | Spatie guidelines | External | Fetch in Phase 1 | Yes - distilled into references |
 | alexeymezenin/laravel-best-practices | External | Fetch in Phase 1 | Yes - distilled into reference |
 | context7 MCP server | External | Configured in fv plugin Phase 1 | Yes - docs/research dependency |
@@ -760,9 +777,9 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | Plan/impact artifacts get large | P3 | Keep artifacts focused, archive completed plans |
 | Boost files conflict on regeneration | P2 | Use `<!-- fv:start/end -->` markers, never modify outside markers |
 | Multi-repo orchestration complexity | P2 | Phase 3b priority, single-repo must work perfectly first |
-| Worktree adapter script incompatibility | P3 | Adapter contract is minimal (4 operations), easy to wrap |
+| Worktree adapter script incompatibility | P3 | Keep the delegated contract minimal (`create`, `list`, `switch`, `copy-env`, `cleanup`) and implement helpers like `active()` in the fv wrapper |
 | CE plugin updates break fv agent references | P2 | Cross-ref validation in release:validate catches broken references. Pin to CE version. |
-| CE plugin not installed alongside fv | P1 | fv:start-session hard-fails with clear error if CE agents not resolvable |
+| CE plugin not installed alongside fv | P1 | fv:start-session hard-fails with clear error if the CE dependency is not resolvable on the current platform |
 | YAML frontmatter injection bypasses gates | P2 | Schema validation, lifecycle transition enforcement, structured exclusion entries |
 | GitNexus graph poisoning via PreToolUse | P2 | Trust boundary docs, no graph injection into bash commands, version pinning |
 | GitNexus local index goes stale | P3 | Treat graph output as advisory, re-run index/setup on freshness failure, fall back to repo reads |
@@ -876,6 +893,10 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | 36 | Cursor support is fully in scope for fv: root cursor marketplace surface must exist/reconcile alongside the plugin-local Cursor manifest | Technical review round 5 |
 | 37 | Cross-platform interaction guidance must be enforced in fv SKILL shell validation, not left as advisory prose | Technical review round 5 |
 | 38 | fv should depend on an fv-owned worktree wrapper contract, with CE script compatibility checked before runtime use | Technical review round 5 |
+| 39 | Baseline hook and worktree infrastructure must land before Phase 2 commands depend on them; Phase 3a hardens, not introduces, those surfaces | Technical review round 6 |
+| 40 | `references/convergent-planning-loop.md` and `references/plan-finalization.md` are first-class Phase 1 artifacts and count toward the plugin reference inventory | Technical review round 6 |
+| 41 | `fv:start-session` must resolve CE with a target-aware dependency check instead of repo-local file probes only | Technical review round 6 |
+| 42 | fv validates only delegated CE worktree verbs; wrapper-owned helpers such as `active()` are local implementation details | Technical review round 6 |
 
 ### Review History
 
@@ -901,6 +922,11 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 **Round 4** (2026-03-22): workflows-review follow-up on the latest plan revision.
 - 1 P1, 3 P2 findings
 - Major changes: unified checkpoint/resume state on `pipeline_phase` + round counters, added `deepen_count` to the plan artifact schema, folded periodic doc verification into `fv:repo-catchup`, clarified that Appendix A.7 is a repo-layer hydration subset rather than a replacement for canonical source-of-truth order
+- Status: all findings accepted and applied
+
+**Round 5** (2026-03-22): workflows-review follow-up on the latest plan revision.
+- 1 P1, 3 P2 findings
+- Major changes: moved baseline hook/worktree infrastructure ahead of Phase 2 dependencies, added missing `/fv:plan` support references and updated inventory counts, made `fv:start-session` CE detection target-aware, and split delegated versus wrapper-owned worktree behavior
 - Status: all findings accepted and applied
 
 ---
