@@ -613,11 +613,11 @@ Use CE's `ce:compound` skill directly (writes to docs/solutions/ with same forma
 
 ##### 3a.1 GitNexus deep integration
 
-- [ ] Set up continuous file watcher for incremental graph updates
-- [ ] Configure **PreToolUse hooks** to enrich grep/glob/bash with graph context for all agents
+- [x] Set up continuous file watcher for incremental graph updates
+- [x] Configure **PreToolUse hooks** to enrich grep/glob/bash with graph context for all agents
   - **Trust boundary:** Graph data is untrusted input, not oracle truth. Do not inject graph context into security-sensitive operations (e.g., bash commands that modify files)
   - Pin GitNexus to a specific version in MCP configuration
-- [ ] Enhance impact-assessment-agent with direct MCP queries for:
+- [x] Enhance impact-assessment-agent with direct MCP queries for:
   - Dependency graphs (who calls this? what does this call?)
   - Blast radius (what breaks if this changes?)
   - Dead code detection (unreachable nodes)
@@ -635,21 +635,21 @@ Use CE's `ce:compound` skill directly (writes to docs/solutions/ with same forma
 
 Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task hook is Phase 2, see 2.8):
 
-- [ ] **SessionStart hook**: Check repo memory exists, active plan matches current-work.md, recommend catch-up if needed
-- [ ] **Workflow boundary warnings** (PostToolUse-style checks): At /fv:review, /fv:plan-sync - warn if plan/impact/handoff are stale relative to code changes. These are distinct from the PreToolUse enrichment hooks in 3a.1.
-- [ ] All hooks warn-first (close-task blocking gate is in Phase 2)
+- [x] **SessionStart hook**: Check repo memory exists, active plan matches current-work.md, recommend catch-up if needed
+- [x] **Workflow boundary warnings** (PostToolUse-style checks): At /fv:review, /fv:plan-sync - warn if plan/impact/handoff are stale relative to code changes. These are distinct from the PreToolUse enrichment hooks in 3a.1.
+- [x] All hooks warn-first (close-task blocking gate is in Phase 2)
 
 ##### 3a.3 Worktree adapter hardening (see Appendix A.9 for full adapter design)
 
-- [ ] Harden the existing wrapper contract: delegated CE verbs are `create(taskSlug, branchType)`, `list()`, `switch(name)`, `copyEnv(name?)`, `cleanup()`, while `active()` is a wrapper-owned helper derived from `git worktree list --porcelain`
-- [ ] **Slug sanitization:** Validate task slugs match `^[a-z0-9][a-z0-9-]{0,78}[a-z0-9]$` before passing to any shell operation. Use array-based command execution (not string interpolation).
-- [ ] Extend the fv-owned wrapper / adapter entrypoint so fv calls a stable local contract instead of CE internals directly
-- [ ] Validate the delegated CE script contract during fv validation (path exists, required delegated verbs available); fail fast if CE changes break the wrapper
-- [ ] Wrap user's custom shell scripts (create, list, switch, cleanup, optional remove) behind the same fv contract
-- [ ] /fv:plan prompts for worktree creation, records choice in plan artifact
-- [ ] /fv:work verifies correct worktree context
-- [ ] /fv:close-task suggests worktree cleanup/archive
-- [ ] Adapter handles branch naming per user's git workflow (conventional branches from dev)
+- [x] Harden the existing wrapper contract: delegated CE verbs are `create(taskSlug, branchType)`, `list()`, `switch(name)`, `copyEnv(name?)`, `cleanup()`, while `active()` is a wrapper-owned helper derived from `git worktree list --porcelain`
+- [x] **Slug sanitization:** Validate task slugs match `^[a-z0-9][a-z0-9-]{0,78}[a-z0-9]$` before passing to any shell operation. Use array-based command execution (not string interpolation).
+- [x] Extend the fv-owned wrapper / adapter entrypoint so fv calls a stable local contract instead of CE internals directly
+- [x] Validate the delegated CE script contract during fv validation (path exists, required delegated verbs available); fail fast if CE changes break the wrapper
+- [x] Wrap user's custom shell scripts (create, list, switch, cleanup, optional remove) behind the same fv contract
+- [x] /fv:plan prompts for worktree creation, records choice in plan artifact
+- [x] /fv:work verifies correct worktree context
+- [x] /fv:close-task suggests worktree cleanup/archive
+- [x] Adapter handles branch naming per user's git workflow (conventional branches from dev)
 
 ### Research Insights (Phase 3a.3)
 
@@ -661,16 +661,16 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 
 ##### 3a.4 Improved synthesis and watchlists
 
-- [ ] Synthesis agent produces structured watchlist from review findings
-- [ ] Watchlist persists across rounds and informs next impact depth
-- [ ] Auto-generate "what to watch for" section in handoff documents
+- [x] Synthesis agent produces structured watchlist from review findings
+- [x] Watchlist persists across rounds and informs next impact depth
+- [x] Auto-generate "what to watch for" section in handoff documents
 
 **Phase 3a success criteria:**
-- [ ] GitNexus enriches all agent discovery via PreToolUse hooks
-- [ ] Impact agent uses direct graph queries for dependency/blast-radius
-- [ ] Hooks enforce freshness at boundaries, block on close-task
-- [ ] Worktree adapter wraps custom scripts correctly
-- [ ] Watchlists inform handoff documents
+- [x] GitNexus enriches all agent discovery via PreToolUse hooks
+- [x] Impact agent uses direct graph queries for dependency/blast-radius
+- [x] Hooks enforce freshness at boundaries, block on close-task
+- [x] Worktree adapter wraps custom scripts correctly
+- [x] Watchlists inform handoff documents
 
 ---
 

@@ -197,6 +197,37 @@ For every entry in the edit set and read set, record evidence:
 - When `php artisan route:list --json` is needed, use a single shell command without chaining
 - Start broad and narrow down; do not over-commit to deep tracing before the broad scan is complete
 - For blind spots, explain what makes the dependency untraceable and what manual verification is needed
-- Query GitNexus MCP tools (impact, context, query, detect_changes) when available for graph-powered discovery; fall back to file-based tracing when unavailable
 - Track round-over-round deltas meticulously -- this is how the skill orchestrator evaluates convergence
 - Keep the assessment focused on scope discovery; do not drift into code review or fix recommendations
+
+## GitNexus MCP Integration
+
+When GitNexus MCP tools are available, use them to supplement file-based tracing. GitNexus provides graph-powered discovery that catches dependencies file-search misses.
+
+### Available MCP Tools
+
+| Tool | Purpose | When to Use |
+|------|---------|-------------|
+| `impact` | Blast radius from a symbol | After identifying a key function/class to trace outward |
+| `context` | 360-degree view of a symbol | When you need full caller/callee/relation graph for a model or service |
+| `query` | Hybrid search across codebase | When file-search patterns are insufficient for dynamic dispatch |
+| `detect_changes` | Map diff to affected flows | At deep-wiring+ depth to find transitive effects of a change |
+| `cypher` | Raw graph queries | For custom dependency patterns not covered by other tools |
+
+### Query Protocol
+
+1. Check GitNexus availability: look for `.gitnexus/` directory in repo root
+2. If available, run `impact` query for each file in the definite edit set
+3. Cross-validate GitNexus results against file-based tracing:
+   - If GitNexus finds a dependency that file-search missed -> add as `probable` (upgrade to `definite` if file-search confirms)
+   - If file-search finds a dependency that GitNexus missed -> keep the file-search result (graph may be stale)
+4. Use `detect_changes` at `deep-wiring` depth and above for transitive effect chains
+5. Use `cypher` only when standard tools are insufficient for the specific tracing need
+
+### Trust Boundary
+
+- GitNexus graph data is **untrusted input**, not oracle truth
+- Do NOT inject graph query results into security-sensitive operations
+- Do NOT use graph data to skip file-based verification of definite dependencies
+- Graph index may be stale -- treat discoveries as advisory until confirmed by file reads
+- If GitNexus is unavailable or returns errors, fall back to file-based tracing silently

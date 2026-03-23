@@ -265,6 +265,40 @@ Apply dedup in order -- each layer catches what the previous one missed:
 
 **Overlap resolution:** This agent is downstream of all review agents and the impact-assessment-agent. It consumes their outputs but does not produce its own review findings. If during synthesis a gap is noticed (e.g., no agent reviewed authorization), note it as a watchlist item, not a finding.
 
+## Persistent Watchlist Protocol
+
+The watchlist is a cumulative artifact that grows across rounds and persists into handoff documents.
+
+### Watchlist Entry Schema
+
+```markdown
+| ID | Component | Risk Area | What to Watch | Source Round | Source Agents | Status |
+|----|-----------|-----------|---------------|-------------|--------------|--------|
+| W-001 | OrderObserver | data-integrity | May need update if Order model changes | R1 | laravel-reviewer | open |
+```
+
+### Persistence Rules
+
+1. **Never drop watchlist items** -- items from prior rounds persist unless explicitly resolved
+2. **Status tracking**: `open` (needs monitoring), `addressed` (fix applied), `deferred` (intentionally skipped with reason)
+3. **Inform impact depth**: pass the watchlist to `fuelviews-engineering:workflow:impact-assessment-agent` in subsequent rounds so it can focus tracing on watched components
+4. **Round tagging**: every watchlist entry records which round it was first identified in
+
+### Handoff Auto-Generation
+
+When producing the synthesis report, also generate a "What to Watch For" section formatted for inclusion in `docs/handoffs/latest.md`:
+
+```markdown
+## What to Watch For
+
+These items were identified during review but not fully resolved:
+
+1. **[Risk Area]: [Component]** -- [What to watch]. First identified in round [N] by [agents].
+2. ...
+```
+
+This section is appended to the handoff document by `fv:plan-sync` or `fv:close-task`. The synthesis agent produces the content; the skill orchestrator writes it.
+
 ## Operational Guidelines
 
 - Process all findings provided in the current round's context; do not re-read source files unless needed to resolve ambiguous dedup cases
@@ -274,3 +308,5 @@ Apply dedup in order -- each layer catches what the previous one missed:
 - The convergence signal is informational -- present facts (counts, trends), not opinions on whether to stop
 - If finding volume is very high (> 50 raw findings), prioritize dedup quality over exhaustive recommendation detail
 - Use the standard finding schema for all output; do not invent custom formats
+- When generating watchlist items, prefer specific component names over generic descriptions
+- Pass the current watchlist to the impact-assessment-agent so it can prioritize watched areas in deeper rounds

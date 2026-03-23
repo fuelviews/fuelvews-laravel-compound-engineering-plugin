@@ -172,6 +172,41 @@ and the result is cached for subsequent worktree operations.
 
 ---
 
+## Custom Script Wrapping
+
+Users may provide custom worktree scripts (e.g., for monorepo setups or
+non-standard branching strategies). The adapter wraps these behind the
+same fv contract so skills never call custom scripts directly.
+
+### Configuration
+
+In `fuelviews-engineering.local.md` or `docs/ai/conventions.md`:
+
+```yaml
+worktree:
+  provider: custom
+  scripts:
+    create: ./scripts/worktree-create.sh
+    list: ./scripts/worktree-list.sh
+    switch: ./scripts/worktree-switch.sh
+    cleanup: ./scripts/worktree-cleanup.sh
+    remove: ./scripts/worktree-remove.sh  # optional
+```
+
+### Adapter Behavior
+
+When `provider: custom` is set:
+- Delegated verbs route to the custom scripts instead of CE's manager
+- Slug validation and array-based execution still apply
+- The `active()` helper still uses `git worktree list --porcelain` (not custom)
+- CE dependency validation is skipped for delegated verbs (custom scripts replace CE)
+- The adapter validates that each configured script path exists before first use
+
+When `provider` is absent or set to `ce` (default):
+- Standard CE delegation as described in Layer 1 above
+
+---
+
 ## Resolution Modes
 
 The adapter supports two resolution modes for locating CE:
