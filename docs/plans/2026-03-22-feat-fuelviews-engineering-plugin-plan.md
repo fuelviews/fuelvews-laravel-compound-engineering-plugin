@@ -390,7 +390,7 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 
 ##### 2.2 /fv:plan (full planning pipeline)
 
-The most complex skill. Includes deepening (no separate fv:deepen-plan skill). Internal phases organized into three groups.
+The most complex skill. Includes deepening (no separate fv:deepen-plan skill). Internal phases organized into three groups. See Appendix A.6 for detailed SKILL.md orchestration patterns (GATE checkpoints, checkpoint/resume, progressive summarization).
 
 **Execution model:** Single invocation runs all phases 0-8. The convergent loop (phases 2-6) iterates within the same session. Phase 5 (deepen) runs up to 2 times maximum -- once after round 1, and optionally again after round 2 if significant new scope was discovered. To mitigate context window exhaustion from cumulative agent outputs, extract the convergent loop logic into `references/convergent-planning-loop.md` and finalization into `references/plan-finalization.md`. These files are scaffolded in Phase 1.4 and counted as part of the plugin reference inventory. The SKILL.md itself orchestrates and links to references.
 
@@ -566,7 +566,7 @@ Fork CE's ce:work with fv additions:
 - [ ] Suggest worktree cleanup/archive if applicable
 - [ ] Set plan status to `closed`
 
-##### 2.9 /fv:repo-catchup
+##### 2.9 /fv:repo-catchup (see Appendix A.8 for classification algorithms)
 
 - [ ] Scan repo structure and existing docs/plans
 - [ ] Create/refresh docs/ai/* (architecture, conventions, repo-map, current-work)
@@ -639,7 +639,7 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 - [ ] **Workflow boundary warnings** (PostToolUse-style checks): At /fv:review, /fv:plan-sync - warn if plan/impact/handoff are stale relative to code changes. These are distinct from the PreToolUse enrichment hooks in 3a.1.
 - [ ] All hooks warn-first (close-task blocking gate is in Phase 2)
 
-##### 3a.3 Worktree adapter hardening
+##### 3a.3 Worktree adapter hardening (see Appendix A.9 for full adapter design)
 
 - [ ] Harden the existing wrapper contract: delegated CE verbs are `create(taskSlug, branchType)`, `list()`, `switch(name)`, `copyEnv(name?)`, `cleanup()`, while `active()` is a wrapper-owned helper derived from `git worktree list --porcelain`
 - [ ] **Slug sanitization:** Validate task slugs match `^[a-z0-9][a-z0-9-]{0,78}[a-z0-9]$` before passing to any shell operation. Use array-based command execution (not string interpolation).
@@ -893,10 +893,10 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 | 36 | Cursor support is fully in scope for fv: root cursor marketplace surface must exist/reconcile alongside the plugin-local Cursor manifest | Technical review round 5 |
 | 37 | Cross-platform interaction guidance must be enforced in fv SKILL shell validation, not left as advisory prose | Technical review round 5 |
 | 38 | fv should depend on an fv-owned worktree wrapper contract, with CE script compatibility checked before runtime use | Technical review round 5 |
-| 39 | Baseline hook and worktree infrastructure must land before Phase 2 commands depend on them; Phase 3a hardens, not introduces, those surfaces | Technical review round 6 |
-| 40 | `references/convergent-planning-loop.md` and `references/plan-finalization.md` are first-class Phase 1 artifacts and count toward the plugin reference inventory | Technical review round 6 |
-| 41 | `fv:start-session` must resolve CE with a target-aware dependency check instead of repo-local file probes only | Technical review round 6 |
-| 42 | fv validates only delegated CE worktree verbs; wrapper-owned helpers such as `active()` are local implementation details | Technical review round 6 |
+| 39 | Baseline hook and worktree infrastructure must land before Phase 2 commands depend on them; Phase 3a hardens, not introduces, those surfaces | Technical review round 5 |
+| 40 | `references/convergent-planning-loop.md` and `references/plan-finalization.md` are first-class Phase 1 artifacts and count toward the plugin reference inventory | Technical review round 5 |
+| 41 | `fv:start-session` must resolve CE with a target-aware dependency check instead of repo-local file probes only | Technical review round 5 |
+| 42 | fv validates only delegated CE worktree verbs; wrapper-owned helpers such as `active()` are local implementation details | Technical review round 5 |
 
 ### Review History
 
