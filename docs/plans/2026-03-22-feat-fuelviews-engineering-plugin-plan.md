@@ -8,10 +8,28 @@ review_round: 4
 review_findings_applied: true
 deepened: true
 deepened_date: 2026-03-22
-deepening_notes: "Added agent structural skeleton, impact tracing chain, convergent state machine, Laravel checklists, plugin architecture details, and round-4 contract fixes for resume state, doc verification ownership, and hydration ordering. Full research in Appendix A."
+deepening_notes: "Added agent structural skeleton, impact tracing chain, convergent state machine, Laravel checklists, plugin architecture details, round-4 contract fixes, plus release-surface parity, cross-platform skill-shell rules, CE worktree-manager reuse, and GitNexus local-state guardrails."
 ---
 
 # feat: Fuelviews Engineering Plugin
+
+## Enhancement Summary
+
+**Deepened on:** 2026-03-22
+**Sections enhanced:** 8
+**Research agents used:** repo-research-analyst, learnings-researcher, architecture-strategist, security-sentinel, performance-oracle, code-simplicity-reviewer, spec-flow-analyzer, agent-native-architecture
+
+### Key Improvements
+1. Expanded release-infrastructure scope to cover `src/release/components.ts`, release-preview tests, and plugin-local `.cursor-plugin/plugin.json` parity.
+2. Added cross-platform SKILL.md requirements so fv shells name blocking question/task tools and include a numbered-list fallback instead of assuming Claude-only tooling.
+3. Tightened Laravel reviewer design with official guidance on policies, escaped Blade output, `Js::from`, explicit eager loading, queue middleware, and PSR-12 style.
+4. Simplified worktree integration by reusing CE's existing manager-script contract instead of raw `git worktree` orchestration.
+5. Clarified GitNexus as local-first optional infrastructure (`.gitnexus/` + user registry), with version pinning and no committed graph state.
+
+### New Considerations Discovered
+- Existing repo release automation treats plugin additions as multi-surface changes: plugin manifests, marketplace metadata, release component routing, and release tests all need updates together.
+- Laravel 12 automatic eager loading is still beta, so reviewers should prefer explicit eager loading and lazy-loading guards over blanket auto-enable guidance.
+- The CE `git-worktree` skill already bakes in env copying, `.worktrees` hygiene, and trust safeguards; fv should build on that behavior, not bypass it.
 
 ## Overview
 
@@ -49,6 +67,8 @@ Fork CE's workflow skills with fv-specific enhancements, organized into four imp
 plugins/fuelviews-engineering/
   .claude-plugin/
     plugin.json                    # Plugin manifest (includes mcpServers)
+  .cursor-plugin/
+    plugin.json                    # Cursor marketplace manifest
   agents/
     review/                        # 8 new review agents
     workflow/                      # 2 new workflow agents
@@ -217,19 +237,37 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 
 - [ ] Add `"fuelviews-engineering"` to `ReleaseComponent` union in `src/release/types.ts`
 - [ ] Add `getFuelviewsEngineeringCounts()` function (or generalize to `getPluginCounts(name)`) in `src/release/metadata.ts`
+- [ ] Add fv component routing and version loading in `src/release/components.ts` (`RELEASE_COMPONENTS`, `FILE_COMPONENT_MAP`, `SCOPES_TO_COMPONENTS`, `loadCurrentVersions()`)
 - [ ] Add fv paths to `syncReleaseMetadata()` in `scripts/release/validate.ts`
+- [ ] Add fv entries to `.github/release-please-config.json` and `.github/.release-please-manifest.json` when wiring the new release component
+- [ ] Validate every CE dependency fv calls directly, not only agents: agent namespaces plus the CE `git-worktree` manager script path and required subcommands / contract
 - [ ] Add cross-plugin agent reference validation: parse fv SKILL.md files for `compound-engineering:*` references and verify each resolves to an actual agent file under `plugins/compound-engineering/agents/`
 - [ ] Add generic plugin content validation: YAML frontmatter format for agents, `name:` frontmatter for skills
+- [ ] Extend `tests/release-components.test.ts`, `tests/release-preview.test.ts`, and `tests/release-metadata.test.ts` for fv-specific component detection, previewing, and metadata drift
 - [ ] Verify `bun run release:validate` catches fv-specific issues (not just CE). Script must check both CE and fv independently, reporting per-plugin counts and drift. Drift in either plugin fails validation.
+
+### Research Insights (Phase 1.0)
+
+**Repo pattern check:** Existing plugin releases are not wired only through `src/release/types.ts` and `src/release/metadata.ts`. File ownership and version preview currently flow through `src/release/components.ts`, with regression coverage in `tests/release-components.test.ts`, `tests/release-preview.test.ts`, and `tests/release-metadata.test.ts`. Treat fv as a first-class release component across all of those surfaces.
+
+**Release-process constraint:** The repo's release automation documentation makes `release-please` manifest mode the canonical authority for plugin and marketplace components. Marketplace registration alone is not enough; fv needs explicit release-please config and manifest ownership so preview/validation behave deterministically.
+
+**Implementation guidance:**
+- Keep plugin versions canonical in plugin-local manifests; do not duplicate plugin versions in marketplace metadata.
+- Add at least one fixture proving fv-only file changes do not bump `compound-engineering`, `coding-tutor`, or `marketplace`.
+- Add one regression check proving fv's CE worktree dependency still resolves: script exists, wrapper target is callable, expected verbs remain available.
+- Preserve the repo's existing rule that ordinary feature PRs update release-owned metadata only through synced scripts and validation, not hand-authored version bumps.
 
 ##### 1.1 Plugin scaffold
 
 - [ ] Create `plugins/fuelviews-engineering/` directory structure
 - [ ] Create `.claude-plugin/plugin.json` manifest with `mcpServers` key (context7 + GitNexus MCP config)
+- [ ] Create `.cursor-plugin/plugin.json` manifest matching the existing repo plugin surfaces
 - [ ] Create `AGENTS.md` with fv-specific plugin development rules and skill naming convention
 - [ ] Create `CLAUDE.md` shim referencing AGENTS.md
 - [ ] Create `README.md` with component inventory (10 agents, 8 skills, 9 references, 6 templates)
 - [ ] Update `.claude-plugin/marketplace.json` to register fv plugin
+- [ ] Treat Cursor as fully in scope for this feature: if root `.cursor-plugin/marketplace.json` is absent on the implementation branch, create/reconcile it first, then register fv there as part of the same change set
 - [ ] Reconcile MASTER-PLAN.md: naming (`/fv-plan` -> `/fv:plan`), paths (`plans/active/` -> `docs/plans/`), frontmatter schema (`converged` -> removed, `excluded_improvements` -> `excluded_findings`, add `task_slug`/`locked_at`/`deepening` status), mark `/fv-compound` as deferred
 - [ ] Create `.mcp.json` at plugin root for MCP servers requiring API key headers (following CE's dual-file pattern)
 - [ ] Run `bun run release:validate` to verify registration (now validates fv too)
@@ -258,6 +296,18 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 - [ ] Fetch https://github.com/alexeymezenin/laravel-best-practices -> `references/laravel-best-practices.md`
 - [ ] Each reference: under 500 lines, imperative voice, concrete code examples or anti-patterns for every rule
 
+### Research Insights (Phases 1.2-1.3)
+
+**Laravel reviewer grounding:** Laravel 12 docs recommend policies for model/resource authorization and reserve gates for non-resource actions. Shape `laravel-reviewer` and `blade-reviewer` prompts to prefer policy checks, `@can` / `@cannot`, and controller / model authorization flows over ad hoc inline checks.
+
+**Blade/XSS rules:** Blade escapes `{{ }}` by default and warns that `{!! !!}` should only be used for trusted data. The reviewer should treat unescaped echoes as exceptional, flag raw user content, and prefer `Js::from(...)` for server-to-JavaScript JSON output in Blade.
+
+**Performance heuristics:** Official Eloquent docs still frame explicit `with()`, `loadMissing()`, and lazy-loading prevention as the stable anti-N+1 tools. Automatic eager loading is beta in Laravel 12, so `laravel-performance-reviewer` should not recommend globally enabling it by default.
+
+**Queue heuristics:** Laravel queue docs emphasize `ShouldBeUnique`, `WithoutOverlapping`, `RateLimited`, retry/backoff controls, and connection options such as `after_commit` and Redis `block_for`. Bake those checks into `laravel-performance-reviewer` and `postgresql-reviewer` when evaluating async work.
+
+**Reference distillation scope:** Spatie's Laravel, JavaScript, and AI guidance plus alexeymezenin's best-practices document overlap heavily. Distill once into terse reviewer-ready rules with examples, then have agents cite the distilled references instead of re-explaining whole upstream guides.
+
 ##### 1.4 Create reference documents
 
 - [ ] `references/impact-depth-guide.md` - Impact assessment depth per round (0-4)
@@ -284,16 +334,28 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 - [ ] `skills/fv-plan-sync/SKILL.md` (minimal shell, name: fv:plan-sync)
 - [ ] `skills/fv-close-task/SKILL.md` (minimal shell, name: fv:close-task)
 - [ ] `skills/fv-repo-catchup/SKILL.md` (minimal shell, name: fv:repo-catchup)
+- [ ] Each fv SKILL shell includes an explicit "Interaction Method" / equivalent section naming blocking question + task tool equivalents and the numbered-list fallback
+- [ ] Add a validation/test pass that checks fv SKILL shells for this cross-platform interaction guidance, not just frontmatter
 
 > **Implementation detail:** MCP config formats, all 13 hook events, hooks.json format, and release infrastructure extension steps are in Appendix A.4. Key learnings: routine PRs should NOT cut releases (docs/solutions/plugin-versioning-requirements.md), use `-beta` suffix for experimental skills (docs/solutions/skill-design/beta-skills-framework.md).
 
 > **MCP config decision:** Use both `plugin.json` `mcpServers` key AND `.mcp.json` at plugin root (following CE's actual pattern). `.mcp.json` handles API key headers via env vars that `plugin.json` cannot express.
 
+### Research Insights (Phase 1.6)
+
+**Cross-platform skill shells:** This repo's plugin guidance requires skills to name blocking question and task-tracking tool equivalents across platforms and include a numbered-list fallback when no structured question tool exists. fv SKILL shells should follow that pattern from day one rather than hard-coding `AskUserQuestion`.
+
+**Pass-through reference rule:** Because SKILL.md files are typically copied across targets, prefer semantic references such as "load the `git-worktree` skill" or actual published command names only. Avoid target-specific slash syntax in fv skill prose unless it is a real entrypoint.
+
+**Token-budget guardrail:** For heavy scans such as `/fv:repo-catchup` plan classification or large impact deltas, use bundled scripts for file and frontmatter inventory generation and let the skill synthesize the output. This follows the repo's documented script-first pattern and keeps `fv:plan` and `fv:repo-catchup` within context limits.
+
 **Phase 1 success criteria:**
 - [ ] `bun run release:validate` passes
 - [ ] All 10 agents have valid YAML frontmatter
 - [ ] All 8 skills have valid SKILL.md with correct name: frontmatter
+- [ ] All 8 skills include enforced cross-platform interaction guidance (tool equivalents + numbered-list fallback)
 - [ ] Plugin appears in marketplace.json
+- [ ] Plugin appears in Cursor marketplace metadata too, with root Cursor marketplace surface created/reconciled if missing
 - [ ] References are under 500 lines each with concrete examples
 - [ ] GitNexus MCP configured in plugin.json mcpServers
 
@@ -441,6 +503,18 @@ Fork CE's ce:work with fv additions:
 - [ ] Output: resolved findings, excluded findings, plan deltas, impact misses
 - [ ] P1 findings block merge
 
+### Research Insights (Phases 2.4-2.5)
+
+**Review panel defaults:** The current repo-level `compound-engineering.local.md` uses a compact default panel (`kieran-typescript-reviewer`, `code-simplicity-reviewer`, `security-sentinel`, `performance-oracle`). Mirror that pattern: keep fv's plan-review panel small, then expand during implementation/review only when changed file types or risk justify it.
+
+**Laravel-specific review rules to encode:**
+- `laravel-reviewer`: prefer policies for model resources, keep gates for non-resource actions, and check auth placement in controllers, middleware, and queued jobs.
+- `blade-reviewer`: default-allow `{{ }}`; scrutinize `{!! !!}`; flag raw JSON encoding when `Js::from` would be safer; check `@can` / `@cannot` gates around sensitive UI.
+- `laravel-performance-reviewer`: look for explicit eager loading, `loadMissing`, lazy-loading prevention, queue concurrency middleware, and backoff / uniqueness choices before recommending larger architectural changes.
+- `php-reviewer`: enforce PSR-12, typed properties, constructor promotion, and happy-path / early-return style drawn from Spatie and PSR-12.
+
+**Operational rule:** `fv:work` and `fv:review` should treat parser, converter, release, or manifest changes in this repo as test-requiring work. `bun test` belongs in the validation path whenever fv implementation touches CLI or release-owned surfaces.
+
 ##### 2.6 /fv:plan-sync
 
 - [ ] Compare plan artifact against actual implementation
@@ -491,6 +565,12 @@ Fork CE's ce:work with fv additions:
 - [ ] Detect Laravel: check for Boost, suggest if appropriate
 - [ ] Detect GitNexus: recommend if not present
 
+### Research Insights (Phase 2.9)
+
+**Script-first catch-up:** Repository catch-up is a strong candidate for bundled helpers that inventory plans, extract frontmatter, and score likely-current work before the LLM reasons over it. Keep human confirmation in the skill, but offload filesystem scanning and classification inputs to scripts.
+
+**Verification boundary:** `fv:repo-catchup` already owns periodic repo-doc verification. Keep that ownership single-purpose; do not add a second verification command with overlapping rules and drift risk.
+
 ##### /fv:compound - DEFERRED
 
 Use CE's `ce:compound` skill directly (writes to docs/solutions/ with same format). Create fv-specific version only when fv-specific changes are needed.
@@ -526,6 +606,15 @@ Use CE's `ce:compound` skill directly (writes to docs/solutions/ with same forma
   - Blast radius (what breaks if this changes?)
   - Dead code detection (unreachable nodes)
 
+### Research Insights (Phase 3a.1)
+
+**Current GitNexus model:** The current GitNexus CLI + MCP flow is local-first. `gitnexus analyze` writes repo-local index data under `.gitnexus/` and registers the repo in `~/.gitnexus/registry.json`; MCP then serves indexed repos from that registry. Treat graph state as optional local cache, not committed project truth.
+
+**Integration guardrails:**
+- Pin a known GitNexus version in MCP setup instead of `@latest`.
+- Assume Claude Code has the deepest hook integration; other editors may get MCP plus skills without equivalent hook depth.
+- Keep fv working when GitNexus is absent or stale by falling back to repo reads and structural search.
+
 ##### 3a.2 Hook enforcement
 
 Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
@@ -538,11 +627,21 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 
 - [ ] Define adapter contract: create(taskSlug, branchType), list(), switch(name), remove(name), active()
 - [ ] **Slug sanitization:** Validate task slugs match `^[a-z0-9][a-z0-9-]{0,78}[a-z0-9]$` before passing to any shell operation. Use array-based command execution (not string interpolation).
+- [ ] Implement an fv-owned wrapper / adapter entrypoint that delegates to CE's `git-worktree` manager by default, so fv calls a stable local contract instead of CE internals directly
+- [ ] Validate the delegated CE script contract during fv validation (path exists, required verbs available); fail fast if CE changes break the wrapper
 - [ ] Wrap user's custom shell scripts (create, list, switch, remove)
 - [ ] /fv:plan prompts for worktree creation, records choice in plan artifact
 - [ ] /fv:work verifies correct worktree context
 - [ ] /fv:close-task suggests worktree cleanup/archive
 - [ ] Adapter handles branch naming per user's git workflow (conventional branches from dev)
+
+### Research Insights (Phase 3a.3)
+
+**Reuse before reinventing:** CE already ships a `git-worktree` manager script that handles `.env` copying, `.worktrees` gitignore hygiene, and trust safeguards. fv should prefer calling that manager or a compatible user-provided wrapper instead of shelling out to raw `git worktree add`.
+
+**Adapter behavior:** Use `git worktree list --porcelain` for machine-readable discovery, and account for `lock`, `prune`, `remove`, and `repair` semantics so deleted or moved worktrees do not leave stale administrative state behind.
+
+**Compatibility rule:** The wrapper is the only surface fv skills call. If CE renames/moves its manager script or changes its CLI, the wrapper or its validator absorbs that breakage before runtime use.
 
 ##### 3a.4 Improved synthesis and watchlists
 
@@ -602,6 +701,7 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 ### Functional Requirements
 
 - [ ] Plugin installs and appears in marketplace
+- [ ] Plugin installs and appears in Cursor marketplace surfaces too
 - [ ] All 8 skills execute their full pipelines
 - [ ] Planning pipeline runs 9 phases (Setup/Loop/Finalize) with convergent review (max 4 rounds)
 - [ ] Impact artifacts track discovery at 5 depth levels with 4 confidence categories
@@ -620,16 +720,20 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 - [ ] New agent namespaces use `fuelviews-engineering:<category>:<name>` format
 - [ ] CE agents referenced via `compound-engineering:<category>:<name>` (not copied)
 - [ ] All skill references use markdown links (not bare backticks)
-- [ ] Skills use AskUserQuestion for blocking questions
+- [ ] Skills name the platform's blocking question / task tool equivalents and include a numbered-list fallback when structured interaction is unavailable
+- [ ] Any direct CE script dependency is wrapped behind an fv-owned contract and validated before runtime use
 - [ ] Hooks are warn-first (except close-task gate)
 - [ ] Spatie/best-practices references under 500 lines each with concrete examples
 - [ ] Templates produce valid YAML frontmatter
 
 ### Quality Gates
 
+- [ ] `bun test` passes
 - [ ] `bun run release:validate` passes
 - [ ] All agent YAML frontmatter validates
 - [ ] All SKILL.md frontmatter validates (correct name: with colon separator)
+- [ ] fv SKILL content validation catches missing cross-platform interaction shells
+- [ ] fv dependency validation catches broken CE worktree-wrapper integration before runtime
 - [ ] Plugin manifest matches component counts (10 agents, 8 skills)
 - [ ] README.md reflects accurate inventory
 
@@ -638,9 +742,10 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | Dependency | Type | Status | Required |
 |------------|------|--------|----------|
 | Compound Engineering plugin | Internal | Available (v2.49.0) | Yes - fv references CE agents |
-| GitNexus | External | MCP config in Phase 1, deep integration Phase 3a | No - graceful fallback |
+| release-please config + manifest | Internal | Required by Phase 1 release infrastructure | Yes - fv must be a first-class release component |
+| GitNexus | External | MCP config in Phase 1, local `.gitnexus/` cache + deep integration in Phase 3a | No - graceful fallback |
 | Laravel Boost | External | Phase 3b | No - optional enhancement |
-| Custom worktree scripts | External | Phase 3a | No - fv works without worktrees |
+| CE git-worktree manager behind fv wrapper / compatible custom scripts | Internal / External | Phase 3a | No - fv works without worktrees |
 | Spatie guidelines | External | Fetch in Phase 1 | Yes - distilled into references |
 | alexeymezenin/laravel-best-practices | External | Fetch in Phase 1 | Yes - distilled into reference |
 | context7 MCP server | External | Configured in fv plugin Phase 1 | Yes - docs/research dependency |
@@ -660,7 +765,11 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | CE plugin not installed alongside fv | P1 | fv:start-session hard-fails with clear error if CE agents not resolvable |
 | YAML frontmatter injection bypasses gates | P2 | Schema validation, lifecycle transition enforcement, structured exclusion entries |
 | GitNexus graph poisoning via PreToolUse | P2 | Trust boundary docs, no graph injection into bash commands, version pinning |
+| GitNexus local index goes stale | P3 | Treat graph output as advisory, re-run index/setup on freshness failure, fall back to repo reads |
 | Task slug command injection | P2 | Strict slug regex validation, array-based command execution |
+| Cross-platform skill interaction regresses on non-Claude targets | P2 | Require blocking-question-tool equivalents plus numbered-list fallback in every fv SKILL shell |
+| Direct CE worktree-manager dependency drifts under fv | P2 | Route all calls through an fv-owned wrapper and validate CE script compatibility during release/test checks |
+| Cursor support lands half-configured | P2 | Treat Cursor as fully in scope: create/reconcile root cursor marketplace surface, register fv there, and test the release component end to end |
 | CE security-sentinel is Rails/JS-focused | P2 | fv Laravel agents (blade-reviewer, laravel-reviewer) cover PHP/Laravel security patterns explicitly. Consider fv-owned laravel-security-reviewer if gaps persist. |
 | Agent panel neutered via .local.md | P2 | Minimum required agent set enforced (laravel-reviewer, php-reviewer, blade-reviewer) |
 | Synthesis-agent dedup quality | P3 | Clear scope boundaries between review agents reduce overlap |
@@ -700,9 +809,14 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 - CE compound skill: `plugins/compound-engineering/skills/ce-compound/SKILL.md`
 - CE brainstorm skill: `plugins/compound-engineering/skills/ce-brainstorm/SKILL.md`
 - CE deepen-plan: `plugins/compound-engineering/skills/deepen-plan/SKILL.md` (no `ce:` prefix)
+- CE git-worktree skill: `plugins/compound-engineering/skills/git-worktree/SKILL.md`
 - Minimal plugin example: `plugins/coding-tutor/`
 - Plugin parser: `src/parsers/claude.ts`
+- Release component routing: `src/release/components.ts`
 - Release validation: `scripts/release/validate.ts`
+- Release automation model: `docs/solutions/workflow/manual-release-please-github-releases.md`
+- Script-first skill pattern: `docs/solutions/skill-design/script-first-skill-architecture.md`
+- Cross-platform entrypoint learnings: `docs/solutions/codex-skill-prompt-entrypoints.md`
 
 ### External References
 
@@ -711,6 +825,12 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 - Spatie JavaScript guidelines: https://spatie.be/guidelines/javascript
 - Spatie AI guidelines: https://spatie.be/guidelines/ai
 - Laravel best practices: https://github.com/alexeymezenin/laravel-best-practices
+- Laravel authorization docs: https://laravel.com/docs/12.x/authorization
+- Laravel Blade docs: https://laravel.com/docs/12.x/blade
+- Laravel queue docs: https://laravel.com/docs/12.x/queues
+- Laravel Eloquent relationship docs: https://laravel.com/docs/12.x/eloquent-relationships
+- Git worktree docs: https://git-scm.com/docs/git-worktree
+- PSR-12: https://www.php-fig.org/psr/psr-12/
 - GitNexus: https://github.com/abhigyanpatwari/GitNexus
 - code-review-graph: https://github.com/tirth8205/code-review-graph
 
@@ -746,6 +866,16 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | 26 | Canonical checkpoint state uses `pipeline_phase` plus round counters in plan frontmatter | Review round 4 |
 | 27 | Periodic docs verification belongs to `fv:repo-catchup`, not a standalone `/fv:verify-docs` command | Review round 4 |
 | 28 | Appendix A.7 hydration order is a repo-layer subset applied after canonical source-of-truth discovery | Review round 4 |
+| 29 | fv should match existing repo plugin surfaces with a plugin-local `.cursor-plugin/plugin.json` manifest | Repo research |
+| 30 | Release-infrastructure work must extend `src/release/components.ts` plus release component / preview / metadata tests, not only `types.ts` and `metadata.ts` | Repo research + release automation doc |
+| 31 | fv SKILL shells must name cross-platform blocking question / task tools and include a numbered-list fallback | Plugin AGENTS + cross-platform learnings |
+| 32 | Worktree integration should default to CE's manager-script contract instead of raw `git worktree add` calls | Repo research + git-worktree skill + git docs |
+| 33 | `laravel-performance-reviewer` should prefer explicit eager loading and lazy-loading guards; do not recommend blanket automatic eager loading because Laravel 12 still marks it beta | Laravel 12 docs |
+| 34 | `blade-reviewer` should treat `{!! !!}` as exceptional and prefer `Js::from` for inline JSON in Blade | Laravel 12 docs |
+| 35 | GitNexus should be treated as local-first optional cache (`.gitnexus/` + user registry), not committed source of truth | GitNexus docs |
+| 36 | Cursor support is fully in scope for fv: root cursor marketplace surface must exist/reconcile alongside the plugin-local Cursor manifest | Technical review round 5 |
+| 37 | Cross-platform interaction guidance must be enforced in fv SKILL shell validation, not left as advisory prose | Technical review round 5 |
+| 38 | fv should depend on an fv-owned worktree wrapper contract, with CE script compatibility checked before runtime use | Technical review round 5 |
 
 ### Review History
 
