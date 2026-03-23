@@ -2,34 +2,82 @@
 title: "feat: Fuelviews Engineering Plugin"
 type: feat
 date: 2026-03-22
+status: implementing
+last_synced: 2026-03-23
 origin: docs/brainstorms/2026-03-22-fuelviews-engineering-plugin-brainstorm.md
 master_plan: MASTER-PLAN.md
 review_round: 5
 review_findings_applied: true
 deepened: true
 deepened_date: 2026-03-22
-deepening_notes: "Added agent structural skeleton, impact tracing chain, convergent state machine, Laravel checklists, plugin architecture details, round-4 contract fixes, plus release-surface parity, cross-platform skill-shell rules, CE worktree-manager reuse, and GitNexus local-state guardrails."
+implementation_date: 2026-03-23
 ---
 
 # feat: Fuelviews Engineering Plugin
 
-## Enhancement Summary
+## Implementation Status (2026-03-23)
+
+**Status:** All 4 phases implemented. Plugin is live and tested in ~/Sites2/vantage-foundry.
+
+### Final Component Inventory
+
+| Component | Count | Notes |
+|-----------|-------|-------|
+| Agents | 10 | 8 review (PHP, Laravel, Blade, JS, PostgreSQL, conventions, health, performance) + 2 workflow (impact, synthesis) |
+| Skills | 9 | fv:start-session, fv:plan, fv:impact, fv:work, fv:review, fv:plan-sync, fv:close-task, fv:repo-catchup, fv:brainstorm |
+| References | 15 | 5 distilled external + 7 internal workflow + 3 integration (multi-repo, Boost, archaeology) |
+| Templates | 9 | 5 artifact + 4 repo-layer scaffold |
+| MCP Servers | 1 | context7 (GitNexus installed to project .mcp.json, not plugin) |
+
+### Major Implementation Changes vs Original Plan
+
+1. **Skills forked from CE, not built from scratch.** fv:plan, fv:work, fv:review, fv:brainstorm are literal copies of CE's skills with surgical fv additions. CE's interactive patterns (AskUserQuestion, `<thinking>` blocks, detail level selection, post-generation options loop) are preserved verbatim. fv enhancements (impact discovery, Laravel agents, convergent loop, GitNexus/Boost) are injected into the existing CE flow.
+
+2. **CE dependency gate removed.** Originally a hard-fail gate in fv:start-session. Changed to informational check -- CE agents are supplementary, all core fv functionality works without CE.
+
+3. **GitNexus installed to project .mcp.json, not plugin .mcp.json.** Plugin ships without GitNexus MCP config. fv:start-session offers to install and configures it in the project's `.mcp.json` and `.claude/settings.local.json`. Matches how laravel-boost and herd are configured. `npx gitnexus analyze` runs at every session start for fresh index.
+
+4. **Boost fully integrated via MCP tools.** 9 Boost MCP tools used across skills: `application-info` (versions), `database-schema` (review context), `search-docs` (17k+ docs), `last-error`/`read-log-entries` (debugging). fv:start-session offers interactive install with `composer require` + `boost:install` + `boost:update`.
+
+5. **Hooks emptied.** Plugin hooks fired globally on ALL projects/sessions, causing errors in repos without plan artifacts. Gate logic moved to skill-internal checks. GitNexus owns its own hooks via `gitnexus setup`.
+
+6. **Impact artifacts in docs/impact/, not docs/plans/.** Dedicated `docs/impact/<slug>.md` directory instead of mixing with plan files.
+
+7. **3-tier doc verification on all review agents.** Boost `search-docs` -> context7 `query-docs` -> WebFetch to official docs. Agents verify patterns against current framework versions before flagging.
+
+8. **Convergent loop is user-driven, not automated.** Instead of a rigid state machine, the user chooses "Review with Laravel agents" from the post-generation options, reviews findings conversationally, and decides whether to run another round. `--auto` flag enables the old automated loop behavior.
+
+9. **Project permissions setup in fv:start-session.** Silently adds Boost MCP tools, gitnexus, web access, git, php, pest, composer, pint permissions to `.claude/settings.local.json`.
+
+10. **fv:brainstorm added** as 9th skill (CE fork). Not in original plan.
+
+11. **Plan sync --all with tiered approach.** Tier 1 (last 30 days) gets full sync with git diff + drift detection. Tier 2 (older) gets lightweight frontmatter-only checkbox counting. Uses task tracking to force iteration.
+
+12. **Additional CE agents integrated.** `pattern-recognition-specialist`, `data-migration-expert`, `schema-drift-detector`, `julik-frontend-races-reviewer`, `bug-reproduction-validator` added to conditional review/plan panels.
+
+### Commits
+
+| Commit | Description |
+|--------|-------------|
+| `e8d4f07` | Phase 1: Scaffold & Baseline (58 files, +6,135 lines) |
+| `69c8a9c` | Phase 2: Workflow Intelligence (9 files, +2,816 lines) |
+| `1bad03e` | Phase 3a: Core Hardening (+140 lines) |
+| `852c881` | Phase 3b: Extended Hardening (+365 lines) |
+| `6e3dd38` | All plan checkboxes complete |
+| `611c889` | GitNexus MCP + broken agent ref fixes |
+| `12977b4` | Major overhaul: CE fork base, GitNexus/Boost, interactive workflows (+2,512 lines) |
+
+## Original Enhancement Summary (2026-03-22)
 
 **Deepened on:** 2026-03-22
 **Sections enhanced:** 8
-**Research agents used:** repo-research-analyst, learnings-researcher, architecture-strategist, security-sentinel, performance-oracle, code-simplicity-reviewer, spec-flow-analyzer, agent-native-architecture
 
-### Key Improvements
+### Key Improvements (from planning phase)
 1. Expanded release-infrastructure scope to cover `src/release/components.ts`, release-preview tests, and plugin-local `.cursor-plugin/plugin.json` parity.
 2. Added cross-platform SKILL.md requirements so fv shells name blocking question/task tools and include a numbered-list fallback instead of assuming Claude-only tooling.
 3. Tightened Laravel reviewer design with official guidance on policies, escaped Blade output, `Js::from`, explicit eager loading, queue middleware, and PSR-12 style.
 4. Simplified worktree integration by reusing CE's existing manager-script contract instead of raw `git worktree` orchestration.
 5. Clarified GitNexus as local-first optional infrastructure (`.gitnexus/` + user registry), with version pinning and no committed graph state.
-
-### New Considerations Discovered
-- Existing repo release automation treats plugin additions as multi-surface changes: plugin manifests, marketplace metadata, release component routing, and release tests all need updates together.
-- Laravel 12 automatic eager loading is still beta, so reviewers should prefer explicit eager loading and lazy-loading guards over blanket auto-enable guidance.
-- The CE `git-worktree` skill already bakes in env copying, `.worktrees` hygiene, and trust safeguards; fv should build on that behavior, not bypass it.
 
 ## Overview
 
@@ -74,15 +122,16 @@ plugins/fuelviews-engineering/
     workflow/                      # 2 new workflow agents
   skills/
     fv-start-session/SKILL.md      # name: fv:start-session
-    fv-plan/SKILL.md               # name: fv:plan (includes deepening)
+    fv-plan/SKILL.md               # name: fv:plan (CE fork + convergent loop + impact)
     fv-impact/SKILL.md             # name: fv:impact
-    fv-work/SKILL.md               # name: fv:work
-    fv-review/SKILL.md             # name: fv:review
-    fv-plan-sync/SKILL.md          # name: fv:plan-sync
+    fv-work/SKILL.md               # name: fv:work (CE fork + drift monitoring + Laravel agents)
+    fv-review/SKILL.md             # name: fv:review (CE fork + Laravel panel + iterative rounds)
+    fv-plan-sync/SKILL.md          # name: fv:plan-sync (--all for batch sync)
     fv-close-task/SKILL.md         # name: fv:close-task
-    fv-repo-catchup/SKILL.md       # name: fv:repo-catchup
+    fv-repo-catchup/SKILL.md       # name: fv:repo-catchup (GitNexus Phase 0)
+    fv-brainstorm/SKILL.md         # name: fv:brainstorm (CE fork)
   hooks/
-    hooks.json                     # SessionStart, workflow boundary checks
+    hooks.json                     # Empty (GitNexus owns hooks via gitnexus setup)
   templates/
     repo-layer/                    # docs/ai/ scaffold templates
     plan-artifact.md               # Plan frontmatter template
@@ -102,6 +151,10 @@ plugins/fuelviews-engineering/
     plan-finalization.md           # /fv:plan finalization and lock flow
     severity-policy.md             # P1/P2/P3 definitions and exclusion rules
     source-of-truth-order.md       # Canonical trust hierarchy
+    worktree-adapter.md            # Worktree contract with CE delegation
+    multi-repo-orchestration.md    # Cross-repo impact, git workflows, fork safety
+    boost-integration.md           # Boost detection, output reading, fv markers
+    repo-archaeology.md            # Advanced plan classification, hotspot analysis
   AGENTS.md
   README.md
   CLAUDE.md                        # Shim -> AGENTS.md
@@ -897,6 +950,18 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 | 40 | `references/convergent-planning-loop.md` and `references/plan-finalization.md` are first-class Phase 1 artifacts and count toward the plugin reference inventory | Technical review round 5 |
 | 41 | `fv:start-session` must resolve CE with a target-aware dependency check instead of repo-local file probes only | Technical review round 5 |
 | 42 | fv validates only delegated CE worktree verbs; wrapper-owned helpers such as `active()` are local implementation details | Technical review round 5 |
+| 43 | Core skills (plan, work, review, brainstorm) are literal CE forks with surgical fv additions, not built from scratch | Implementation |
+| 44 | CE dependency gate removed; CE agents are supplementary, all core fv functionality works independently | Implementation testing |
+| 45 | GitNexus MCP installed to project .mcp.json via fv:start-session, not shipped in plugin .mcp.json | Implementation -- matches laravel-boost/herd pattern |
+| 46 | Hooks emptied; plugin hooks fire globally on all projects causing errors; GitNexus owns hooks via `gitnexus setup` | Implementation testing in vantage-foundry |
+| 47 | Impact artifacts in dedicated `docs/impact/` directory, not mixed with plans in `docs/plans/` | Implementation |
+| 48 | Convergent review loop is user-driven conversation ("want another round?"), not automated state machine; `--auto` flag for automated mode | Implementation -- CE's interactive style is better UX |
+| 49 | 3-tier doc verification: Boost search-docs -> context7 query-docs -> WebFetch; agents verify against current framework version docs before flagging | Implementation |
+| 50 | fv:start-session runs `npx gitnexus analyze` at every session start for fresh knowledge graph | Implementation |
+| 51 | Project permissions (Boost MCP tools, gitnexus, web, git, php, pest, composer) set up silently in fv:start-session | Implementation |
+| 52 | Plan sync --all uses tiered approach: full sync for last 30 days, lightweight for older; task tracking forces iteration | Implementation -- 112 plans too many for full sync |
+| 53 | fv:brainstorm added as 9th skill (CE fork with fv: namespace references) | Implementation |
+| 54 | Additional CE agents integrated: pattern-recognition-specialist, data-migration-expert, schema-drift-detector, julik-frontend-races-reviewer, bug-reproduction-validator | Implementation |
 
 ### Review History
 
