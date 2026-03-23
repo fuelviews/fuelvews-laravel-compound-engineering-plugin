@@ -311,7 +311,7 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 
 The most complex skill. Includes deepening (no separate fv:deepen-plan skill). Internal phases organized into three groups.
 
-**Execution model:** Single invocation runs all phases 0-8. The convergent loop (phases 2-6) iterates within the same session. Phase 5 (deepen) runs exactly once, between round 1 and the start of the convergent loop. To mitigate context window exhaustion from cumulative agent outputs, extract the convergent loop logic into `references/convergent-planning-loop.md` and finalization into `references/plan-finalization.md`. The SKILL.md itself orchestrates and links to references.
+**Execution model:** Single invocation runs all phases 0-8. The convergent loop (phases 2-6) iterates within the same session. Phase 5 (deepen) runs up to 2 times maximum -- once after round 1, and optionally again after round 2 if significant new scope was discovered. To mitigate context window exhaustion from cumulative agent outputs, extract the convergent loop logic into `references/convergent-planning-loop.md` and finalization into `references/plan-finalization.md`. The SKILL.md itself orchestrates and links to references.
 
 **Agent scope boundaries for Eloquent overlap:** `laravel-reviewer` owns architectural layering (fat models, wrong layer). `laravel-conventions-reviewer` owns naming and structural conventions. `laravel-performance-reviewer` owns runtime characteristics (N+1, eager loading). Each agent's AGENT.md must define explicit scope boundaries.
 
@@ -319,7 +319,7 @@ The most complex skill. Includes deepening (no separate fv:deepen-plan skill). I
 
 > **Implementation detail:** Full state machine (INIT -> DISPATCH -> COLLECT -> SYNTHESIZE -> EVALUATE -> [DEEPEN | DISPATCH | REPORT]), guards, round-specific focus escalation, convergence tiers, context budget management, and 3-layer dedup are in Appendix A.5 and will be authored as `references/convergence-rules.md` in Phase 1.4.
 >
-> **Key design points:** Max 4 rounds. Stop on zero new P1/P2 findings. DEEPEN state triggers after round 1 (`round == 1 AND NOT deepened`), then transitions back to DISPATCH for round 2. Review focus labels (broad/interaction/system-wide/adversarial) describe reviewer scope, NOT impact depth levels (broad/plan-aware/deep-wiring/deep-legacy/contract-validation) -- these are separate scales.
+> **Key design points:** Max 4 review rounds. Max 2 deepen rounds. Stop on zero new P1/P2 findings. DEEPEN state triggers after round 1 (`round == 1 AND deepen_count < 2`), and optionally after round 2 if material new scope was discovered (`round == 2 AND deepen_count < 2 AND significant_new_scope`). Review focus labels (broad/interaction/system-wide/adversarial) describe reviewer scope, NOT impact depth levels (broad/plan-aware/deep-wiring/deep-legacy/contract-validation) -- these are separate scales.
 >
 > **Checkpoint/resume:** If context pressure exceeds threshold before all phases complete, checkpoint state to plan frontmatter (`last_completed_phase`, `convergence_round`) and instruct user to re-invoke `/fv:plan --resume`.
 
@@ -362,20 +362,24 @@ The most complex skill. Includes deepening (no separate fv:deepen-plan skill). I
 - [ ] Update impact artifact (round 1)
 - [ ] Feed plan deltas back
 
-**Phase 5: Deepen-plan (integrated, not separate skill)**
-- [ ] Stress-test assumptions against impact findings
-- [ ] Compare alternate approaches
-- [ ] Explore hidden risk and simplification opportunities
-- [ ] Update plan with deepened sections
+**Phase 5: Deepen-plan (integrated, max 2 rounds)**
+- [ ] Run deepen pass 1 (mandatory after round 1 review + impact)
+  - Stress-test assumptions against impact findings
+  - Compare alternate approaches
+  - Explore hidden risk and simplification opportunities
+  - Update plan with deepened sections
+- [ ] Track `deepen_count` in plan state (increment after each pass)
+- [ ] Deepen pass 2 is optional: triggers after round 2 if material new scope/domain entered
 
 **Phase 6: Review rounds 2-4 (convergent loop)**
 - [ ] For each round (max 4 total):
   - Run review panel
   - Run impact assessment (deeper each round)
+  - After round 2: if material new scope discovered AND `deepen_count < 2`, run deepen pass 2 before round 3
   - Check convergence: no new actionable P1-P3? Stop early
   - Check re-run conditions: material plan change, new domain/module, new side-effect path
   - Update plan incrementally
-- [ ] Track convergence state in plan frontmatter
+- [ ] Track convergence state and `deepen_count` in plan frontmatter
 
 **--- Finalize (Phases 7-8) ---**
 
@@ -732,6 +736,7 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | 22 | State machine includes DEEPEN state between round 1 and convergent loop | Review round 3 |
 | 23 | Checkpoint/resume for context exhaustion via plan frontmatter state | Review round 3 |
 | 24 | Research insights extracted to appendix, plan body has pointers only | Review round 3 |
+| 25 | Deepen-plan runs up to 2 times max (mandatory after R1, optional after R2 if new scope) | User directive |
 
 ### Review History
 
@@ -847,7 +852,7 @@ Research gathered during deepening pass. These will be consumed when authoring r
 
 **Guards:**
 - `CAN_DISPATCH`: round < 4 AND NOT converged AND context_budget > min
-- `NEEDS_DEEPENING`: round == 1 AND NOT deepened
+- `NEEDS_DEEPENING`: (round == 1 AND deepen_count < 2) OR (round == 2 AND deepen_count < 2 AND significant_new_scope)
 - `HAS_CONVERGED`: new_actionable_count == 0 OR 2x consecutive P3-only
 - `FORCE_STOP`: round >= 4 OR context_budget < min
 - `CONTEXT_PRESSURE`: next_round_cost > remaining * 0.8 -> artifact-backed mode
@@ -864,3 +869,99 @@ Research gathered during deepening pass. These will be consumed when authoring r
 **Context budget:** Round 1 full detail -> Round 2 compressed prior + full -> Round 3 ultra-compressed + full -> Round 4 minimal + full.
 
 **Dedup:** 3-layer -- exact (file+line+type), semantic (region+concern), escalation (P3 now P2/P1).
+
+### A.6 fv:plan SKILL.md Orchestration (Deepening Pass 2)
+
+**Section structure:** Frontmatter -> Introduction -> Interaction Method -> Input -> Core Principles -> Pipeline State Schema -> Workflow (Setup Group / Loop Group / Finalize Group) -> Impact Artifact Schema -> Plan Frontmatter Schema -> Convergence Rules -> Post-Pipeline Options -> Transition to fv:work.
+
+**Phase grouping pattern (from CE's SLFG skill):** Sequential Phase (must complete in order) -> Parallel Phase (concurrent tasks) -> Finalize Phase (cleanup, handoff). Maps to fv:plan's Setup (0-2) / Loop (3-6) / Finalize (7-8).
+
+**GATE pattern (from CE's LFG skill):** Insert explicit `GATE: STOP.` checkpoints between groups. Example: "GATE: Verify plan file exists on disk. If not, retry. Do NOT proceed."
+
+**Checkpoint/resume via frontmatter:** Every phase updates `pipeline_phase` in plan frontmatter. `--resume <plan-path>` reads this and jumps to correct phase. Phase mapping: 0-1 -> restart intake, 2 -> start review, 3 -> check impact, 4 -> start deepen, 5 -> start loop, 6 -> resume at `review_rounds_completed + 1`, 7 -> start lock, 8 -> present options.
+
+**Progressive summarization between rounds:** After each round, create compact summary (round N, new findings list, resolved, excluded, impact delta, confidence trend). Pass summary (not full agent output) to next round's agents.
+
+**Transition to fv:work:** Pass locked plan path, final impact artifact path, and task slug. fv:work uses the watchlist and blind spots for drift monitoring during implementation.
+
+**Key implementation notes:**
+- Phase 2 follows ce:plan-beta's approach but feeds impact seed data as additional context
+- Impact is the differentiator -- CE has no impact concept. Must be fully specified.
+- Deepen runs up to 2 times max. First is mandatory after round 1, second is optional after round 2 if significant new scope.
+- The convergent loop is review -> impact -> convergence check (deepen is a branching state, not part of every iteration)
+- Frontmatter is the checkpoint mechanism. Durable across sessions.
+- Laravel-specific checks are wired into the review panel, not a separate phase.
+
+### A.7 Repo-Layer Truth Templates (Deepening Pass 2)
+
+**architecture.md:** Under 200 lines. Sections: Stack, Architectural Decisions (request flow, domain organization), Key Patterns (table format), Callback/Event Chains to Know, External Integrations, What NOT to Do. Include `Last verified` date. Table format for patterns (faster for agents to parse than prose).
+
+**conventions.md:** Only rules that differ from or extend framework defaults. Every line must earn its place. Sections: PHP, Laravel, Testing, Naming (table), Code Review Non-Negotiables. Do NOT include formatting rules (those belong in pint.json). Do NOT repeat framework docs.
+
+**repo-map.md:** Self-healing design -- instruction at top tells agents to verify and update if inaccurate. Sections: Entry Points (table), Domain Directories (table), Configuration Wiring (table), Test Locations (table), Key Commands, Recent Structural Changes. Omit exact line counts and file counts (stale immediately). Use "as of last count" for estimates.
+
+**current-work.md:** Overwritten every session. Sections: Active Task (title, plan, branch, status), Progress (checkboxes), Current Context (with key decisions made), Blockers/Open Questions, Files Currently Being Modified (table with status), Mistakes to Avoid.
+
+**handoff (latest.md):** Sections: What Was Accomplished, Commits Made, What Did NOT Work, Current State, Open Questions Carried Forward, Recommended Next Steps (ordered), Key Files to Read First. Critical content: decisions with rationale, failed approaches, specific file paths, ordered next steps.
+
+**Session hydration order for fv:start-session:**
+1. conventions.md (rules that constrain all behavior)
+2. architecture.md (structural decisions)
+3. repo-map.md (what exists and where)
+4. handoffs/latest.md (what last session did)
+5. current-work.md (active task state)
+6. plans/_index.md (plan registry)
+7. Active plan file (referenced in current-work.md)
+
+**Staleness detection (3 tiers):**
+- Tier 1 (passive): `Last verified` date. >14 days = WARNING, >30 days = BLOCKING, >60 days = STALE.
+- Tier 2 (active): Compare `git log -1 -- docs/ai/` vs `git log -1 -- app/ database/ routes/ config/`. If code changed more recently, docs may be stale.
+- Tier 3 (periodic): `/fv:verify-docs` cross-references doc claims against actual code (directories exist, model counts match, commands run).
+
+### A.8 Legacy Repo Catch-Up Algorithms (Deepening Pass 2)
+
+> **Scope note:** Phase 2.9 (`/fv:repo-catchup`) should use a simplified subset of these algorithms. Full 6-signal classification and Tornhill hotspot analysis are Phase 3b.3 targets. Phase 2.9 focuses on: git recency + frontmatter status + checkbox ratio for plan classification, and basic directory scanning for architecture inference.
+
+**Plan classification algorithm:** 6 signals combined with weighted evidence.
+1. Git recency: 0-14 days = likely current, 61-180 = likely historical/abandoned, 180+ = likely dead
+2. Content freshness: checkbox ratio (1.0 + old = historical, 0.0 + old = abandoned, partial + old = abandoned)
+3. Branch/PR correlation: open PR = current, merged PR = historical, closed-without-merge = abandoned
+4. Supersession detection: explicit `superseded_by` frontmatter, same feature name with later dates
+5. Code reference validation: check if referenced files still exist. <30% existence = dead
+6. Commit message cross-reference: recent commits implementing plan features = historical
+
+Combined: explicit frontmatter trumps all -> supersession evidence -> code validation -> branch/PR -> recency + completion -> default `needs_human_confirmation`.
+
+**Architecture inference for Laravel:** Run `php artisan route:list --json`, `php artisan model:show --all`, `php artisan db:show`. Detect patterns: Filament (app/Filament/), Livewire (app/Livewire/), Actions (app/Actions/), Services (app/Services/), Repositories (app/Repositories/), Domain-driven (app/Domain/ or app/Modules/).
+
+**Convention extraction:** Sample 3-5 files per category. Extract: injection patterns, return types, validation location, authorization location, query patterns. Majority-wins for each dimension. Flag inconsistencies as legacy drift zones (<80% consistency).
+
+**Risk zone detection (Tornhill hotspot method):** `hotspot_score = normalize(churn) * normalize(complexity)`. Churn = commits/12mo via `git log --name-only`. Complexity = LOC proxy via `wc -l`. Top-right quadrant (high churn + high complexity) = primary risk. Also detect: bus factor = 1 (single author), no test coverage, fat controllers >300 LOC, God models >500 LOC, temporal coupling (files that change together in different directories).
+
+**Execution order:** Scan (fast, parallel, read-only) -> Infer (compute, no writes) -> Write (create/refresh docs) -> Organize (move files, requires confirmation for low-confidence) -> Flag (human-confirmation gaps last).
+
+### A.9 Worktree Adapter Design (Deepening Pass 2)
+
+**Adapter interface:** 5 core methods (create, list, switch, remove, active) + 3 extended (resolve, copyEnv, cleanup). `CreateOptions` includes `branchType`, `fromBranch`, `repoType` (app/package/package-fork).
+
+**Branch naming:** `<type>/<task-slug>`. Always lowercase, hyphens only, max 80 chars total. Type prefix matches conventional commit types. Slug validated against `^[a-z0-9][a-z0-9-]*[a-z0-9]$`.
+
+**Repo-type-aware base branch:**
+- App: `dev` (or `develop`, falling back to `main`)
+- Package: `main`
+- Package fork: `main` on fork remote (NEVER upstream)
+
+**Auto-detection:** Check `composer.json` type field ("library" = package). Check for `upstream` remote (present = fork).
+
+**Task-to-worktree tracking:** JSON registry at `.worktrees/.worktree-registry.json` (gitignored). Bidirectional: registry maps slug -> worktree, plan frontmatter maps worktree -> slug.
+
+**Edge cases handled:** Branch lock conflicts (same branch in two worktrees), stale worktrees (prune before listing), case-sensitive naming on macOS, nested worktree prevention, locked worktrees, detached HEAD after force-push, uncommitted changes on removal, submodule state.
+
+**Lifecycle:**
+- `/fv:plan` Phase 0: ask to create, record choice in plan frontmatter
+- `/fv:work` Phase 1: resolve and switch to task worktree
+- `/fv:close-task`: verify clean, offer cleanup with `deleteBranch: true`
+
+**Fork safety:** Validate `origin != upstream` before any push/PR. Use git remote allowlist in docs/ai/conventions.md. Require explicit confirmation for fork operations.
+
+**Multi-repo coordination:** Convention-based discovery via sibling directories. Cross-repo task manifest with `mergeOrder` (leaf-first: dependencies before dependents). Post-merge sync scripts are repo-type-aware (app: dev->main rebase, package: wait for checks, fork: never upstream).
