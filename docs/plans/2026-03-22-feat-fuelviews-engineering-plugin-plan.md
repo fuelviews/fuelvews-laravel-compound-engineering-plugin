@@ -680,35 +680,35 @@ Extend the baseline `hooks/hooks.json` created in Phase 1.7 (note: close-task ho
 
 ##### 3b.1 Multi-repo orchestration
 
-- [ ] Detect related repos (composer.json dependencies pointing to local paths or owned GitHub repos)
+- [x] Detect related repos (composer.json dependencies pointing to local paths or owned GitHub repos)
   - **Path safety:** Validate composer.json local paths are within the expected workspace root (no `../../../` traversal)
-- [ ] Track cross-repo impact in impact artifacts (dependencies, shared interfaces, package versions)
-- [ ] Support plan references to work in other repos
-- [ ] Handle git workflows for: apps (PR to dev), packages (PR to main), package forks (PR to fork, never upstream)
+- [x] Track cross-repo impact in impact artifacts (dependencies, shared interfaces, package versions)
+- [x] Support plan references to work in other repos
+- [x] Handle git workflows for: apps (PR to dev), packages (PR to main), package forks (PR to fork, never upstream)
   - **Fork safety:** Implement git remote allowlist stored in docs/ai/conventions.md. Verify target remote is in allowlist before any push/PR. Require explicit user confirmation for fork push operations.
 
 ##### 3b.2 Boost-aware behavior
 
-- [ ] Detect Laravel Boost installation (check composer.json/lock)
-- [ ] If installed: read Boost outputs as additional signal source
-- [ ] Extend Boost files with fv sections using `<!-- fv:start -->` / `<!-- fv:end -->` delimiters
+- [x] Detect Laravel Boost installation (check composer.json/lock)
+- [x] If installed: read Boost outputs as additional signal source
+- [x] Extend Boost files with fv sections using `<!-- fv:start -->` / `<!-- fv:end -->` delimiters
   - Validate marker pairing: exactly one start, one end, start before end, no nesting
   - On regeneration, verify existing markers are well-formed before modifying
-- [ ] If not installed: suggest once on /fv:start-session or /fv:repo-catchup
-- [ ] Record Boost decision in docs/ai/conventions.md (never ask again)
+- [x] If not installed: suggest once on /fv:start-session or /fv:repo-catchup
+- [x] Record Boost decision in docs/ai/conventions.md (never ask again)
 
 ##### 3b.3 Stronger repo archaeology
 
-- [ ] Deeper plan classification heuristics for legacy repos
-- [ ] Cross-reference git history with plan dates for better classification
-- [ ] Detect common Laravel patterns (admin/user parity, multi-tenancy, API versioning)
-- [ ] Build richer repo-map.md with risk zones and ownership hints
+- [x] Deeper plan classification heuristics for legacy repos
+- [x] Cross-reference git history with plan dates for better classification
+- [x] Detect common Laravel patterns (admin/user parity, multi-tenancy, API versioning)
+- [x] Build richer repo-map.md with risk zones and ownership hints
 
 **Phase 3b success criteria:**
-- [ ] Multi-repo impact tracked in artifacts
-- [ ] Git workflow differences (app/package/fork) handled correctly
-- [ ] Boost files extended without conflicts
-- [ ] Legacy repos normalize faster with richer archaeology
+- [x] Multi-repo impact tracked in artifacts
+- [x] Git workflow differences (app/package/fork) handled correctly
+- [x] Boost files extended without conflicts
+- [x] Legacy repos normalize faster with richer archaeology
 
 ---
 

@@ -10,7 +10,7 @@ Laravel-focused engineering workflow with impact discovery, convergent review, l
 |-----------|-------|
 | Agents | 10 |
 | Skills | 8 |
-| References | 11 |
+| References | 15 |
 | Templates | 6 |
 
 ## Agents
@@ -63,6 +63,10 @@ Laravel-focused engineering workflow with impact discovery, convergent review, l
 | plan-finalization.md | /fv:plan finalization and lock flow |
 | severity-policy.md | P1/P2/P3 definitions and exclusion rules |
 | source-of-truth-order.md | Canonical trust hierarchy (11 levels) |
+| worktree-adapter.md | Worktree contract with CE delegation and custom script support |
+| multi-repo-orchestration.md | Cross-repo impact tracking, git workflow handling, fork safety |
+| boost-integration.md | Laravel Boost detection, output reading, fv marker extension |
+| repo-archaeology.md | Advanced plan classification, pattern detection, risk mapping |
 
 ## Templates
 
