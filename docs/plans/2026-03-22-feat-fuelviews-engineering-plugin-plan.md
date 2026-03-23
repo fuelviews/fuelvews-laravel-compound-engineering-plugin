@@ -4,26 +4,14 @@ type: feat
 date: 2026-03-22
 origin: docs/brainstorms/2026-03-22-fuelviews-engineering-plugin-brainstorm.md
 master_plan: MASTER-PLAN.md
-review_round: 2
+review_round: 3
 review_findings_applied: true
 deepened: true
 deepened_date: 2026-03-22
+deepening_notes: "Added agent structural skeleton, impact tracing chain, convergent state machine, Laravel checklists, plugin architecture details. Full research in Appendix A."
 ---
 
 # feat: Fuelviews Engineering Plugin
-
-## Enhancement Summary
-
-**Deepened on:** 2026-03-22
-**Research agents used:** repo-research-analyst (agent design + plugin architecture), best-practices-researcher (impact assessment + convergent review), framework-docs-researcher (Laravel quality checklists)
-**Learnings applied:** plugin-versioning-requirements, script-first-skill-architecture, beta-skills-framework
-
-### Key Improvements from Deepening
-1. **Agent definitions**: Concrete structural skeleton (frontmatter -> examples -> role -> protocol -> checklist -> output format -> guidelines) with standardized findings schema for synthesis
-2. **Impact assessment**: Complete Laravel dependency tracing chain (routes -> middleware -> controllers -> form requests -> services -> models -> observers -> events -> listeners -> jobs), GitNexus MCP tool inventory, concrete artifact format with delta tracking
-3. **Convergent review**: Full state machine (INIT -> DISPATCH -> COLLECT -> SYNTHESIZE -> EVALUATE -> REPORT) with guards, progressive focus narrowing per round, context budget management via artifact-backed mode
-4. **Laravel checklists**: Production-ready checklists for all 8 review agents with code examples, anti-patterns, and PostgreSQL migration safety patterns
-5. **Plugin architecture**: Exact MCP config formats, all 13 hook events documented, cross-plugin reference patterns, release infrastructure extension steps
 
 ## Overview
 
@@ -164,49 +152,13 @@ CE agents NOT used by fv (Ruby/Python/Every-specific):
 
 **Total: 10 new agents + 19 CE agents referenced = 29 agents available.**
 
-### Research Insights: Agent Design Patterns
-
-**Structural skeleton (every agent must follow):**
-1. YAML frontmatter: `name`, `description` (with "Use when..." clause), `model: inherit`
-2. Examples block: 2-3 `<example>` blocks with `<commentary>` for dispatch routing
-3. Role paragraph: "You are a [Expert Title] specializing in [domain]. Your mission is to [goal]."
-4. Numbered protocol: Step-by-step checklist of what to examine
-5. Verification checklist: `- [ ]` items that must be verified before output
-6. Structured output format: Standardized findings schema (see below)
-7. Operational guidelines: Short bullets of meta-instructions
-
-**Standardized findings schema (all fv agents must use):**
-```markdown
-### Finding N
-- **Category**: [security|performance|architecture|quality|data-integrity|conventions|dead-code]
-- **Severity**: [P1|P2|P3]
-- **File**: [path:line]
-- **Summary**: One-sentence description
-- **Detail**: What is wrong and why it matters
-- **Recommendation**: Concrete fix with code example
-- **Effort**: [Small|Medium|Large]
-```
-
-**Scope boundary template (add to each agent):**
-```markdown
-## Scope
-**This agent covers:** [specific areas]
-**This agent does NOT cover (defer to):** [named agent for each excluded area]
-**Overlap resolution:** Report here ONLY if primary concern is this agent's domain.
-```
-
-**Dispatch strategy for 10 agents:**
-- Batch into groups of 3-4, collect inline per batch
-- If context pressure high, switch to artifact-backed mode: each agent writes full findings to `.context/fuelviews-engineering/<skill>/<run-id>/agent-name.md`, returns only 3-4 line summary
-- Build compact-safe fallback: single-pass simplified review when context is exhausted
-
-**Relevant learnings:** Script-first architecture (docs/solutions/skill-design/script-first-skill-architecture.md) -- if any agent needs to process large datasets, offload to bundled scripts to reduce token consumption by 60-75%.
+> **Implementation detail:** All agents follow the structural skeleton and standardized findings schema defined in Appendix A.1. Dispatch strategy: batch 3-4, artifact-backed mode under context pressure.
 
 ### Per-Project Agent Configuration
 
 Users can configure which agents run during `/fv:review` by creating a `fuelviews-engineering.local.md` file in the project root. This follows CE's `compound-engineering.local.md` pattern. If absent, the full default panel is used.
 
-**Minimum required agent set** (cannot be removed via .local.md): `laravel-reviewer`, `security-sentinel` (or fv security equivalent), `php-reviewer`. If .local.md omits any of these, emit a warning and add them back. Only agents from `compound-engineering:` and `fuelviews-engineering:` namespaces are allowed.
+**Minimum required agent set** (cannot be removed via .local.md): `laravel-reviewer`, `php-reviewer`, `blade-reviewer`. These cover the core Laravel security surface (mass assignment, XSS, policy enforcement). If .local.md omits any, emit a warning and add them back. CE's `security-sentinel` is available as an optional generic web security check but is not mandatory (it is Rails/JS-focused). Only agents from `compound-engineering:` and `fuelviews-engineering:` namespaces are allowed.
 
 ### Artifact Schemas
 
@@ -244,36 +196,7 @@ previous_round: null
 
 Sections: confidence summary (definite/probable/possible/blind spot), definite edit set, definite read set, watchlist, blind spots, evidence notes, tests impacted, risks, what changed since prior round.
 
-### Research Insights: Impact Assessment Implementation
-
-**Confidence classification rules (evidence-based, not intuition):**
-- `definite` := direct use statement OR direct method call OR extends/implements OR route binding
-- `probable` := event listener for changed event OR observer on changed model OR middleware in pipeline
-- `possible` := same trait used OR similar naming pattern OR same table different model OR config reference
-- `blind_spot` := dynamic instantiation OR reflection usage OR external package hook OR runtime config switch
-
-**Laravel dependency tracing chain (per file in edit set):**
-1. Routes referencing this controller -> `routes/*.php` grep + `php artisan route:list --json`
-2. Middleware applied -> `Kernel.php` groups + route middleware
-3. Form requests -> controller type-hinted parameters
-4. Injected services -> constructor type-hints
-5. Models touched -> service class grep for `::query()`, `->save()`, `->update()`
-6. Per model: observers (`Model::observe()`), events (`$dispatchesEvents`), relations, policies (`AuthServiceProvider::$policies`)
-7. Filament resources -> `$model = Model::class` in `Filament/Resources/`
-8. Livewire components -> `<livewire:*>` and `$this->dispatch()` patterns
-9. Event listeners -> `EventServiceProvider::$listen`
-10. Job chains -> `dispatch()`, `Bus::chain()`
-
-**GitNexus MCP tools for impact assessment:**
-- `impact` -- primary blast radius with depth grouping and confidence
-- `context` -- 360-degree symbol view (all references)
-- `query` -- hybrid search (BM25 + semantic) for related code
-- `detect_changes` -- git diff to affected processes/flows
-- `cypher` -- raw graph queries for custom traversal
-
-**Round-over-round delta tracking:** Each artifact includes "New Since RN?" column in tables, delta summary section, prior round reference in frontmatter, and confidence count delta showing how the picture sharpened.
-
-**External tools to consider integrating:** Larastan (type-aware Laravel analysis), ast-grep (structural PHP pattern matching), nazonohito51/dependency-analyzer (class-level dependency graphs).
+> **Implementation detail:** Confidence classification rules, Laravel dependency tracing chain (10 steps), GitNexus MCP tool inventory, and delta tracking format are in Appendix A.2. Each artifact tracks round-over-round deltas with "New Since RN?" columns and confidence count changes.
 
 **Plan index** (`docs/plans/_index.md`):
 
@@ -294,7 +217,7 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 - [ ] Add fv paths to `syncReleaseMetadata()` in `scripts/release/validate.ts`
 - [ ] Add cross-plugin agent reference validation: parse fv SKILL.md files for `compound-engineering:*` references and verify each resolves to an actual agent file under `plugins/compound-engineering/agents/`
 - [ ] Add generic plugin content validation: YAML frontmatter format for agents, `name:` frontmatter for skills
-- [ ] Verify `bun run release:validate` catches fv-specific issues (not just CE)
+- [ ] Verify `bun run release:validate` catches fv-specific issues (not just CE). Script must check both CE and fv independently, reporting per-plugin counts and drift. Drift in either plugin fails validation.
 
 ##### 1.1 Plugin scaffold
 
@@ -304,7 +227,8 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 - [ ] Create `CLAUDE.md` shim referencing AGENTS.md
 - [ ] Create `README.md` with component inventory (10 agents, 8 skills, 9 references, 6 templates)
 - [ ] Update `.claude-plugin/marketplace.json` to register fv plugin
-- [ ] Reconcile MASTER-PLAN.md naming (`/fv-plan` -> `/fv:plan`) and paths (`plans/active/` -> `docs/plans/`)
+- [ ] Reconcile MASTER-PLAN.md: naming (`/fv-plan` -> `/fv:plan`), paths (`plans/active/` -> `docs/plans/`), frontmatter schema (`converged` -> removed, `excluded_improvements` -> `excluded_findings`, add `task_slug`/`locked_at`/`deepening` status), mark `/fv-compound` as deferred
+- [ ] Create `.mcp.json` at plugin root for MCP servers requiring API key headers (following CE's dual-file pattern)
 - [ ] Run `bun run release:validate` to verify registration (now validates fv too)
 
 ##### 1.2 Create new fv agents
@@ -320,23 +244,7 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 - [ ] `agents/workflow/impact-assessment-agent.md`
 - [ ] `agents/workflow/synthesis-agent.md`
 
-### Research Insights: Laravel Agent Checklists (Key Items Per Agent)
-
-**php-reviewer:** PSR-12, typed properties, return types, constructor promotion, happy path pattern (early returns), strict comparisons, readonly properties, no unused imports.
-
-**laravel-reviewer:** Single responsibility controllers (HTTP only), fat models/skinny controllers, FormRequest validation, service classes for business logic, Eloquent scopes for DRY, mass assignment via `$request->validated()`, eager loading, `Model::shouldBeStrict()`, policy-based auth, route model binding, no `env()` outside config, IoC over `new`, events/listeners for side effects, queue heavy work.
-
-**blade-reviewer:** Always `{{ }}` for user data, audit every `{!! !!}`, no inline JS with user data, use `@json()` for data transfer, CSRF on all forms. **Livewire:** authorize all actions, `#[Locked]` on sensitive properties, store models not scalar IDs, persistent middleware. **Alpine:** `::` prefix for non-PHP attributes, no sensitive data in `x-data`.
-
-**postgresql-reviewer:** N+1 detection, chunk large datasets, paginate results, `CREATE INDEX CONCURRENTLY` (set `$withinTransaction = false`), three-step column additions (nullable -> backfill -> NOT NULL), `SET lock_timeout`, separate schema from data migrations, JSONB over JSON, GIN indexes on JSONB, partial indexes for boolean columns, expression indexes.
-
-**laravel-conventions-reviewer:** Controller singular PascalCase, route URLs plural kebab-case, model singular PascalCase, table plural snake_case, pivot alphabetical, route tuple notation with `::class`, array notation for validation, shorter syntax helpers (`session()`, `back()`, `now()`, `latest()`).
-
-**laravel-codebase-health-reviewer:** No commented-out code, no unused imports/routes/model methods/config keys/Blade components, no duplicate validation rules, no repeated query logic (extract scopes), no God classes (>300 lines review, >500 split), run Larastan level 6+.
-
-**laravel-performance-reviewer:** `preventLazyLoading()` in dev, `withCount()` over loading relations for counts, `Cache::remember()` not manual get/set, Redis over file cache, config/route/view caching in production, idempotent job design, explicit `$tries`/`$backoff`/`$maxExceptions`, `->select()` to limit columns, `chunkById()` for batch processing.
-
-*(Full checklists with code examples available in research output -- will be used when authoring agent .md files)*
+> **Implementation detail:** Full checklists with code examples for all 8 review agents are in Appendix A.3. These will be used directly when authoring agent .md files in Phase 1.2.
 
 ##### 1.3 Fetch and distill guidelines
 
@@ -374,35 +282,9 @@ Table with: title, file, status, canonical, created, last_verified, superseded_b
 - [ ] `skills/fv-close-task/SKILL.md` (minimal shell, name: fv:close-task)
 - [ ] `skills/fv-repo-catchup/SKILL.md` (minimal shell, name: fv:repo-catchup)
 
-### Research Insights: Plugin Architecture
+> **Implementation detail:** MCP config formats, all 13 hook events, hooks.json format, and release infrastructure extension steps are in Appendix A.4. Key learnings: routine PRs should NOT cut releases (docs/solutions/plugin-versioning-requirements.md), use `-beta` suffix for experimental skills (docs/solutions/skill-design/beta-skills-framework.md).
 
-**MCP server config options (3 approaches, all valid):**
-1. Inline in plugin.json `mcpServers` key (simplest for fv)
-2. External `.mcp.json` at plugin root (auto-discovered, what CE uses)
-3. Path reference in plugin.json (`"mcpServers": "mcp/servers.json"`)
-
-**Hook events available (13 total):** PreToolUse, PostToolUse, PostToolUseFailure, SessionStart, SessionEnd, Stop, PreCompact, Setup, PermissionRequest, UserPromptSubmit, Notification, SubagentStart, SubagentStop.
-
-**hooks.json format:**
-```json
-{
-  "hooks": {
-    "SessionStart": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "..." }] }],
-    "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "prompt", "prompt": "..." }] }]
-  }
-}
-```
-
-**Release infrastructure extension (Phase 1.0):**
-1. Add to `ReleaseComponent` type union in `src/release/types.ts`
-2. Add counting function in `src/release/metadata.ts`
-3. Add paths to `syncReleaseMetadata()` in `scripts/release/validate.ts`
-4. Add release-please config in `.github/release-please-config.json`
-5. Add manifest version in `.github/.release-please-manifest.json`
-
-**Relevant learnings:**
-- Plugin versioning (docs/solutions/plugin-versioning-requirements.md): Routine PRs should NOT cut releases. Do not hand-bump versions.
-- Beta skills (docs/solutions/skill-design/beta-skills-framework.md): Use `-beta` suffix + `disable-model-invocation: true` for experimental skills.
+> **MCP config decision:** Use both `plugin.json` `mcpServers` key AND `.mcp.json` at plugin root (following CE's actual pattern). `.mcp.json` handles API key headers via env vars that `plugin.json` cannot express.
 
 **Phase 1 success criteria:**
 - [ ] `bun run release:validate` passes
@@ -435,39 +317,11 @@ The most complex skill. Includes deepening (no separate fv:deepen-plan skill). I
 
 **Convergence responsibility:** The synthesis-agent dedupes and prioritizes findings. The skill orchestrator makes convergence decisions (stop/continue) using synthesis output. The synthesis-agent does not decide convergence.
 
-### Research Insights: Convergent Review State Machine
-
-**State machine:** INIT -> DISPATCH -> COLLECT -> SYNTHESIZE -> EVALUATE -> [DISPATCH | REPORT]
-
-**Guards:**
-- `CAN_DISPATCH`: round < 4 AND NOT converged AND context_budget > min_for_round
-- `HAS_CONVERGED`: new_actionable_count == 0 OR 2x consecutive P3-only rounds
-- `FORCE_STOP`: round >= 4 OR context_budget < min_for_round
-- `CONTEXT_PRESSURE`: next_round_cost > remaining_budget * 0.8 -> switch to artifact-backed mode
-
-**Round-specific focus escalation:**
-
-| Round | Focus | Impact Depth |
-|-------|-------|-------------|
-| 1 | Broad review -- all P1/P2/P3 | Surface: file-local |
-| 2 | Interaction effects between changes, cross-file | Cross-file: integration |
-| 3 | System-wide: error propagation, state lifecycle, API parity | System-wide |
-| 4 | Final: P1 risks only, challenge prior P2 severities | Adversarial |
-
-**Convergence detection heuristics:**
-- Tier 1 (hard stop): Zero new P1/P2 findings in current round
-- Tier 2 (soft stop): 2x consecutive P3-only rounds OR 75%+ drop in finding count
-- Tier 3 (forced stop): Max rounds reached OR context exhausted
-
-**Context budget management:**
-- Round 1: Full detail findings
-- Round 2: Compressed round 1 summary (one-liners) + full round 2
-- Round 3: Ultra-compressed prior (counts + P1 detail only) + full round 3
-- Round 4: Minimal prior context + full round 4
-
-**Dedup strategy:** 3-layer matching -- exact (same file+line+type), semantic (same region+concern), escalation (prior P3 now P2/P1 with new evidence).
-
-**Source:** Zylos Research (multi-model code review production data), Self-Refine (iterative refinement), Google ADK (loop agents with max_iterations).
+> **Implementation detail:** Full state machine (INIT -> DISPATCH -> COLLECT -> SYNTHESIZE -> EVALUATE -> [DEEPEN | DISPATCH | REPORT]), guards, round-specific focus escalation, convergence tiers, context budget management, and 3-layer dedup are in Appendix A.5 and will be authored as `references/convergence-rules.md` in Phase 1.4.
+>
+> **Key design points:** Max 4 rounds. Stop on zero new P1/P2 findings. DEEPEN state triggers after round 1 (`round == 1 AND NOT deepened`), then transitions back to DISPATCH for round 2. Review focus labels (broad/interaction/system-wide/adversarial) describe reviewer scope, NOT impact depth levels (broad/plan-aware/deep-wiring/deep-legacy/contract-validation) -- these are separate scales.
+>
+> **Checkpoint/resume:** If context pressure exceeds threshold before all phases complete, checkpoint state to plan frontmatter (`last_completed_phase`, `convergence_round`) and instruct user to re-invoke `/fv:plan --resume`.
 
 **--- Setup (Phases 0-1) ---**
 
@@ -798,7 +652,7 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | GitNexus graph poisoning via PreToolUse | P2 | Trust boundary docs, no graph injection into bash commands, version pinning |
 | Task slug command injection | P2 | Strict slug regex validation, array-based command execution |
 | CE security-sentinel is Rails/JS-focused | P2 | fv Laravel agents (blade-reviewer, laravel-reviewer) cover PHP/Laravel security patterns explicitly. Consider fv-owned laravel-security-reviewer if gaps persist. |
-| Agent panel neutered via .local.md | P2 | Minimum required agent set enforced (laravel-reviewer, security-sentinel, php-reviewer) |
+| Agent panel neutered via .local.md | P2 | Minimum required agent set enforced (laravel-reviewer, php-reviewer, blade-reviewer) |
 | Synthesis-agent dedup quality | P3 | Clear scope boundaries between review agents reduce overlap |
 | Sensitive data in committed artifacts | P3 | Document that plan artifacts may contain security info; recommend .gitignore for public repos |
 
@@ -809,6 +663,7 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 - **Design agents**: Re-add Figma agents when design workflow is needed
 - **Repo separation**: fv and CE are coupled by co-location. Separating them would require a cross-plugin dependency resolver.
 - **AI model improvements**: As models get better context handling, some discovery work may simplify
+- **Static analysis integration**: Evaluate Larastan, ast-grep, nazonohito51/dependency-analyzer for deeper impact assessment
 - **Graph tool alternatives**: Adapter pattern for GitNexus means other tools could be swapped in
 - **Team collaboration**: Multi-user plan/review workflows
 - **CI integration**: Hooks that run impact assessment on PR creation
@@ -872,7 +727,11 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 | 17 | Drop design agents, defer until Figma workflow needed | Review round 1 |
 | 18 | Split Phase 3 into 3a (core) and 3b (extended) | Review round 1 |
 | 19 | docs/plans/ flat path (CE convention), not plans/active/ | Review round 1 |
-| 20 | MCP servers in plugin.json mcpServers, not .mcp.json | Review round 1 |
+| 20 | MCP servers: both plugin.json mcpServers AND .mcp.json (CE's dual-file pattern) | Review round 1 + round 3 |
+| 21 | Minimum required agents: laravel-reviewer, php-reviewer, blade-reviewer (not security-sentinel) | Review round 3 |
+| 22 | State machine includes DEEPEN state between round 1 and convergent loop | Review round 3 |
+| 23 | Checkpoint/resume for context exhaustion via plan frontmatter state | Review round 3 |
+| 24 | Research insights extracted to appendix, plan body has pointers only | Review round 3 |
 
 ### Review History
 
@@ -887,3 +746,121 @@ Create `hooks/hooks.json` (note: close-task hook is Phase 2, see 2.8):
 - Simplicity: 0 P1, 4 P2, 6 P3 (confirmed round 1 revisions landed well)
 - Major changes: add release infra extension (Phase 1.0), cross-ref agent validation, CE hard-fail check in start-session, frontmatter validation schema, close-task hook moved to Phase 2, GitNexus trust boundary, slug sanitization, minimum required agent set, agent scope boundaries documented, fork safety via remote allowlist, Boost marker validation, kieran-typescript made conditional, execution model clarified for fv:plan
 - Convergence status: approaching convergence. No structural rework needed. Remaining items are implementation-level hardening.
+
+**Round 3** (2026-03-22): DHH, Kieran, Simplicity reviewers on deepened plan.
+- DHH: 1 P1 (research insights break readability), 4 P2, 3 P3. "Ready to ship with P1 fix."
+- Kieran: 2 P1 (state machine missing DEEPEN state, MCP config contradicts CE pattern), 5 P2, 6 P3. "Conditionally implementation-ready."
+- Simplicity: 0 P1, 3 P2, 7 P3. "Converged and ready to implement."
+- Major changes: extracted research insights to appendix pointers, added DEEPEN state, fixed MCP config to dual-file pattern, updated minimum required agent set, added checkpoint/resume, clarified review vs impact depth labels, added validate behavior spec, moved external tools to Future
+- Convergence status: **CONVERGED**. All reviewers confirm ready to implement. No structural rework needed.
+
+---
+
+## Appendix A: Research Insights
+
+Research gathered during deepening pass. These will be consumed when authoring reference docs and agent definitions in Phase 1.
+
+### A.1 Agent Design Patterns
+
+**Structural skeleton (every agent must follow):**
+1. YAML frontmatter: `name`, `description` (with "Use when..." clause), `model: inherit`
+2. Examples block: 2-3 `<example>` blocks with `<commentary>` for dispatch routing
+3. Role paragraph: "You are a [Expert Title] specializing in [domain]. Your mission is to [goal]."
+4. Numbered protocol: Step-by-step checklist of what to examine
+5. Verification checklist: `- [ ]` items that must be verified before output
+6. Structured output format: Standardized findings schema (below)
+7. Operational guidelines: Short bullets of meta-instructions
+
+**Standardized findings schema (all fv agents must use):**
+```markdown
+### Finding N
+- **Category**: [security|performance|architecture|quality|data-integrity|conventions|dead-code]
+- **Severity**: [P1|P2|P3]
+- **File**: [path:line]
+- **Summary**: One-sentence description
+- **Detail**: What is wrong and why it matters
+- **Recommendation**: Concrete fix with code example
+- **Effort**: [Small|Medium|Large]
+```
+
+**Scope boundary template:**
+```markdown
+## Scope
+**This agent covers:** [specific areas]
+**This agent does NOT cover (defer to):** [named agent for each excluded area]
+**Overlap resolution:** Report here ONLY if primary concern is this agent's domain.
+```
+
+**Dispatch strategy:** Batch 3-4 agents, collect inline per batch. Under context pressure, switch to artifact-backed mode (`.context/fuelviews-engineering/<skill>/<run-id>/agent-name.md`). Build compact-safe fallback for exhausted context.
+
+### A.2 Impact Assessment Implementation
+
+**Confidence classification rules:**
+- `definite` := direct use statement OR direct method call OR extends/implements OR route binding
+- `probable` := event listener for changed event OR observer on changed model OR middleware in pipeline
+- `possible` := same trait used OR similar naming pattern OR same table different model OR config reference
+- `blind_spot` := dynamic instantiation OR reflection usage OR external package hook OR runtime config switch
+
+**Laravel dependency tracing chain (per file in edit set):**
+1. Routes referencing this controller -> `routes/*.php` grep + `php artisan route:list --json`
+2. Middleware applied -> `Kernel.php` groups + route middleware
+3. Form requests -> controller type-hinted parameters
+4. Injected services -> constructor type-hints
+5. Models touched -> service class grep for `::query()`, `->save()`, `->update()`
+6. Per model: observers, events (`$dispatchesEvents`), relations, policies (`AuthServiceProvider::$policies`)
+7. Filament resources -> `$model = Model::class` in `Filament/Resources/`
+8. Livewire components -> `<livewire:*>` and `$this->dispatch()` patterns
+9. Event listeners -> `EventServiceProvider::$listen`
+10. Job chains -> `dispatch()`, `Bus::chain()`
+
+**GitNexus MCP tools:** `impact` (blast radius), `context` (360-degree symbol view), `query` (hybrid search), `detect_changes` (diff to flows), `cypher` (raw graph queries).
+
+### A.3 Laravel Agent Checklists
+
+**php-reviewer:** PSR-12, typed properties, return types, constructor promotion, happy path pattern, strict comparisons, readonly properties, no unused imports.
+
+**laravel-reviewer:** Single responsibility controllers, fat models/skinny controllers, FormRequest validation, service classes, Eloquent scopes, `$request->validated()`, eager loading, `Model::shouldBeStrict()`, policy-based auth, route model binding, no `env()` outside config, IoC over `new`, events for side effects, queue heavy work.
+
+**blade-reviewer:** Always `{{ }}`, audit `{!! !!}`, `@json()` for data transfer, CSRF. **Livewire:** authorize actions, `#[Locked]`, store models not IDs, persistent middleware. **Alpine:** `::` prefix, no sensitive data in `x-data`.
+
+**postgresql-reviewer:** N+1, chunking, pagination, `CREATE INDEX CONCURRENTLY`, three-step column additions, `SET lock_timeout`, JSONB/GIN indexes, partial indexes, expression indexes.
+
+**laravel-conventions-reviewer:** Controller singular PascalCase, routes plural kebab-case, model singular, table plural snake_case, pivot alphabetical, route tuple notation, array validation syntax, shorter helpers.
+
+**laravel-codebase-health-reviewer:** No commented code, no unused imports/routes/methods/config/components, no duplicated rules/queries, no God classes, Larastan level 6+ (if installed).
+
+**laravel-performance-reviewer:** `preventLazyLoading()`, `withCount()`, `Cache::remember()`, Redis, config caching, idempotent jobs, explicit retry config, `->select()`, `chunkById()`.
+
+### A.4 Plugin Architecture Details
+
+**MCP config:** Both `plugin.json` `mcpServers` AND `.mcp.json` at plugin root (CE pattern). `.mcp.json` handles API key headers.
+
+**Hook events (13):** PreToolUse, PostToolUse, PostToolUseFailure, SessionStart, SessionEnd, Stop, PreCompact, Setup, PermissionRequest, UserPromptSubmit, Notification, SubagentStart, SubagentStop.
+
+**hooks.json format:** `{ "hooks": { "EventName": [{ "matcher": "pattern", "hooks": [{ "type": "command|prompt|agent", ... }] }] } }`
+
+**Release infrastructure:** Add to `ReleaseComponent` union, add counting function, add sync paths, add release-please config + manifest.
+
+### A.5 Convergent Review State Machine
+
+**States:** INIT -> DISPATCH -> COLLECT -> SYNTHESIZE -> EVALUATE -> [DEEPEN | DISPATCH | REPORT]
+
+**Guards:**
+- `CAN_DISPATCH`: round < 4 AND NOT converged AND context_budget > min
+- `NEEDS_DEEPENING`: round == 1 AND NOT deepened
+- `HAS_CONVERGED`: new_actionable_count == 0 OR 2x consecutive P3-only
+- `FORCE_STOP`: round >= 4 OR context_budget < min
+- `CONTEXT_PRESSURE`: next_round_cost > remaining * 0.8 -> artifact-backed mode
+
+**Round focus escalation (review scope, not impact depth):**
+
+| Round | Focus |
+|-------|-------|
+| 1 | Broad -- all P1/P2/P3 |
+| 2 | Interaction effects, cross-file |
+| 3 | System-wide: error propagation, state lifecycle, API parity |
+| 4 | Adversarial: P1 risks only, challenge prior P2 severities |
+
+**Context budget:** Round 1 full detail -> Round 2 compressed prior + full -> Round 3 ultra-compressed + full -> Round 4 minimal + full.
+
+**Dedup:** 3-layer -- exact (file+line+type), semantic (region+concern), escalation (P3 now P2/P1).
