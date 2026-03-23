@@ -83,7 +83,7 @@ Launch the impact assessment agent with the gathered context:
 
 Also dispatch the codebase researcher in parallel for dependency graph mapping:
 
-- Task `compound-engineering:research:codebase-researcher` with scope: dependency graph for files in the diff or plan
+- Task `compound-engineering:research:repo-research-analyst` with scope: dependency graph for files in the diff or plan
 
 Wait for both to complete. Merge the codebase researcher's dependency findings into the impact assessment.
 
@@ -167,7 +167,7 @@ Activated when the input contains two paths separated by a comma or space, or tw
 
 ### CE Agents
 
-- `compound-engineering:research:codebase-researcher` -- map dependency graph for impact scope
+- `compound-engineering:research:repo-research-analyst` -- map dependency graph for impact scope
 
 ### FV Agents
 

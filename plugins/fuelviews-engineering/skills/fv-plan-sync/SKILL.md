@@ -220,7 +220,7 @@ Suggested Next:
 
 ### CE Agents
 
-- `compound-engineering:research:codebase-researcher` -- scan recent commits and file changes for drift detection when the diff is large (>20 files changed) and manual classification would be error-prone
+- `compound-engineering:research:repo-research-analyst` -- scan recent commits and file changes for drift detection when the diff is large (>20 files changed) and manual classification would be error-prone
 
 ### FV Agents
 

@@ -311,7 +311,7 @@ Suggested Next:
 
 ### CE Agents
 
-- `compound-engineering:research:codebase-researcher` -- verify implementation state for gate checks when the diff is large and manual verification would be error-prone
+- `compound-engineering:research:repo-research-analyst` -- verify implementation state for gate checks when the diff is large and manual verification would be error-prone
 
 ### FV Agents
 

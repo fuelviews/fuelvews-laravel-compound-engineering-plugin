@@ -219,18 +219,64 @@ Look for a `.gitnexus/` directory in the project root.
 
 ### If Missing
 
-Report:
+Check if `docs/ai/conventions.md` contains `gitnexus: declined`. If declined previously, skip silently.
+
+If not previously declined, ask the user (using the platform's blocking question tool):
 
 ```
-INFO: GitNexus not detected. Install for enhanced impact analysis.
-(Recording this decision -- will not ask again this session.)
+GitNexus enhances impact analysis with graph-powered dependency tracing.
+It is not installed in this repo.
+
+1. Install GitNexus now (recommended)
+2. Skip for now
+3. Never ask again for this project
 ```
 
-Do not block session initialization. Do not prompt the user about GitNexus more than once per session. Record the absence so that downstream skills can check without re-prompting.
+**If the user chooses "Install":**
+
+Run these commands to install and initialize GitNexus:
+
+```bash
+npm install -g gitnexus@1
+gitnexus analyze
+```
+
+This creates `.gitnexus/` in the project root and registers the repo in `~/.gitnexus/registry.json`.
+
+Post-install steps:
+1. Add `.gitnexus/` to `.gitignore` if not already present
+2. Enable the GitNexus MCP server by editing the project's `.claude/settings.local.json` to add `"gitnexus"` to the `enabledMcpjsonServers` array (or create the file if missing):
+   ```json
+   {
+     "enabledMcpjsonServers": ["gitnexus"]
+   }
+   ```
+3. Verify by checking `.gitnexus/` exists and the MCP server responds
+
+After installation, the `fuelviews-engineering:workflow:impact-assessment-agent` will automatically use GitNexus MCP tools (`impact`, `context`, `query`, `detect_changes`) for graph-powered dependency tracing during `/fv:plan` and `/fv:impact` workflows.
+
+**If the user chooses "Skip":**
+
+Record the skip for this session only. Downstream skills will fall back to file-based tracing.
+
+**If the user chooses "Never ask":**
+
+Write to `docs/ai/conventions.md` (create if missing):
+
+```yaml
+gitnexus: declined
+gitnexus_decided_at: YYYY-MM-DD
+```
 
 ### If Present
 
-Note "GitNexus: available" for the session brief.
+Check if the index is stale: compare `.gitnexus/` last modified against `git log -1 --format=%ci`. If the git repo has commits newer than the index, suggest re-indexing:
+
+```bash
+gitnexus analyze
+```
+
+Note "GitNexus: available" (or "GitNexus: available (stale index)") for the session brief.
 
 ---
 
