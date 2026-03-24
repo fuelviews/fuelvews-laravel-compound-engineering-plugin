@@ -103,11 +103,12 @@ Launch the impact assessment agent with the gathered context:
   - `file_context`: diff output or file content depending on input type
   - `slug`: `$SLUG`
 
-Also dispatch the codebase researcher in parallel for dependency graph mapping:
+Also dispatch the codebase researcher in parallel for dependency graph mapping (send both Task calls in a single message — do NOT poll, sleep, or shell out to check status):
 
 - Task `compound-engineering:research:repo-research-analyst` with scope: dependency graph for files in the diff or plan
+  **Return contract:** Return ONLY: dependency graph summary, transitive callers/callees. No full file contents.
 
-Wait for both to complete. Merge the codebase researcher's dependency findings into the impact assessment.
+Wait for both to complete (they return automatically). Merge the codebase researcher's dependency findings into the impact assessment.
 
 **Do NOT modify any plan artifact.** This is a read-only diagnostic.
 

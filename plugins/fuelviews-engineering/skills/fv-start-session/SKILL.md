@@ -420,6 +420,67 @@ Note "Boost: available" for the session brief.
 
 ---
 
+## Step 7b: Herd Availability
+
+Check whether Laravel Herd is available as an infrastructure MCP server. See [herd-integration.md](./references/herd-integration.md) for tool reference.
+
+### Detection
+
+Check for Herd: run `which herd` or check if `/Applications/Herd.app` exists (macOS).
+
+### If Herd is detected but MCP not configured
+
+Check if `.mcp.json` contains a `herd` server entry. If not:
+
+**GATE: Herd MCP setup.** Use **AskUserQuestion** (do NOT proceed without a response):
+
+1. "Configure Herd MCP now (recommended)" -- Enables infrastructure debugging, service management, PHP version detection
+2. "Skip for now"
+3. "Never ask again for this project"
+
+**If the user chooses "Configure":**
+
+```bash
+claude mcp add herd php /Applications/Herd.app/Contents/Resources/herd-mcp.phar -e SITE_PATH="$(pwd)"
+```
+
+Add Herd MCP permissions to `.claude/settings.local.json` allow list:
+```
+"mcp__herd__site_information"
+"mcp__herd__debug_site"
+"mcp__herd__get_all_sites"
+"mcp__herd__find_available_services"
+"mcp__herd__get_all_php_versions"
+"mcp__herd__start_or_stop_service"
+```
+
+Inform the user: "Herd MCP configured. Run `/reload-plugins` to activate."
+
+**If the user chooses "Skip":** Record skip for this session only.
+
+**If the user chooses "Never ask":** Write to `docs/ai/conventions.md`: `herd_mcp: declined` with date.
+
+### If Herd MCP is available
+
+Call `site_information` to get environment context (PHP version, Node version, site URL, env vars).
+Call `find_available_services` to get service status (MySQL, Redis, queue runner).
+
+Note for session brief:
+```
+Herd: available (PHP X.Y, MySQL running, Redis running)
+```
+
+If both Boost and Herd are active:
+```
+Full-stack context: Boost (application) + Herd (infrastructure)
+```
+
+### If Herd is not detected
+
+Skip silently. Note "Herd: not detected" for the session brief.
+
+---
+
 ## Step 8: Output Session Brief
 
 Present a structured summary of everything detected as formatted markdown:
@@ -436,6 +497,7 @@ Present a structured summary of everything detected as formatted markdown:
 | CE | <available vX.Y.Z / not detected> |
 | GitNexus | <available (N symbols) / installed / declined / skipped> |
 | Boost | <available / not installed / N/A> |
+| Herd | <available (PHP X.Y, services) / not detected> |
 
 ### Active Task
 

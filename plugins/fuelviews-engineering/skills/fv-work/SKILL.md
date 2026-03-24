@@ -156,6 +156,23 @@ This command takes a work document (plan, specification, or todo file) and execu
      - Run System-Wide Test Check (see below)
      - Run tests after changes
      - If Boost MCP tools are available, use `mcp__laravel-boost__last-error` and `mcp__laravel-boost__read-log-entries` when tests fail. Use `mcp__laravel-boost__database-schema` to verify migrations. Use `mcp__laravel-boost__search-docs` for framework documentation.
+     - If Herd MCP tools are available (see references/herd-integration.md):
+       * When tests fail: use `mcp__herd__debug_site` for broader execution context (captures queries, dispatched jobs, outgoing HTTP requests, variable dumps — faster than checking logs/tinker/telescope separately)
+       * When service errors occur (connection refused, timeout): use `mcp__herd__find_available_services` to check status, `mcp__herd__start_or_stop_service` to restart
+       * When testing PHP compatibility: use `mcp__herd__isolate_or_unisolate_site` to switch versions
+     - If the task involves UI/Blade/Livewire/Alpine changes, use Chrome browser tools for visual verification (see references/chrome-browser-integration.md):
+       * Call `mcp__claude-in-chrome__tabs_context_mcp` to check browser state
+       * Navigate to affected page with `mcp__claude-in-chrome__navigate`
+       * Screenshot with `mcp__claude-in-chrome__read_page` to verify the change
+       * Check `mcp__claude-in-chrome__read_console_messages` for JS errors
+       * For Livewire/Alpine: use `mcp__claude-in-chrome__javascript_tool` to verify component state
+       * For forms: use `mcp__claude-in-chrome__form_input` + `mcp__claude-in-chrome__computer` to test
+       * Record with `mcp__claude-in-chrome__gif_creator` for the PR description
+     - When debugging HTTP/JS errors in the browser:
+       * Navigate to the failing route
+       * Use `mcp__claude-in-chrome__read_network_requests` to inspect responses
+       * Use `mcp__claude-in-chrome__read_console_messages` for client-side errors
+       * Use `mcp__claude-in-chrome__javascript_tool` to inspect runtime state
      - Mark task as completed
      - Evaluate for incremental commit (see below)
    ```
@@ -309,7 +326,7 @@ This command takes a work document (plan, specification, or todo file) and execu
 
    Use for complex, risky, or large changes. Read agents from `fuelviews-engineering.local.md` frontmatter (`review_agents`). If no settings file, invoke the `setup` skill to create one.
 
-   Run configured agents in parallel with Task tool. Present structured findings and address critical issues.
+   Run configured agents in parallel with Task tool (send all Task calls in a single message — do NOT poll, sleep, or shell out to check status). Present structured findings and address critical issues.
 
 3. **Final Validation**
    - All tasks marked completed
@@ -377,7 +394,15 @@ This command takes a work document (plan, specification, or todo file) and execu
    bin/dev  # Run in background
    ```
 
-   **Step 2: Capture screenshots with agent-browser CLI**
+   **Step 2: Capture screenshots**
+
+   **Option A: Chrome browser tools (preferred when claude-in-chrome MCP available):**
+   - `mcp__claude-in-chrome__navigate` to the page
+   - `mcp__claude-in-chrome__read_page` for screenshot + DOM snapshot
+   - `mcp__claude-in-chrome__gif_creator` for animated interactions
+   - `mcp__claude-in-chrome__resize_window` to capture mobile/desktop variants
+
+   **Option B: agent-browser CLI (fallback):**
    ```bash
    agent-browser open http://localhost:3000/[route]
    agent-browser snapshot -i

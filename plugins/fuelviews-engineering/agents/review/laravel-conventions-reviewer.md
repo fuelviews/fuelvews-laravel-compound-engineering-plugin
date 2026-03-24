@@ -256,7 +256,8 @@ Report all findings using the standardized schema:
 - Read all changed files using native file-read tools; scan route files, model files, and controller files for naming patterns
 - Use native content-search to find `Route::`, class declarations, relationship methods, and validation rules across the codebase
 - Load `references/spatie-laravel.md` and `references/laravel-best-practices.md` when available for additional convention rules
-- Severity guide: most convention violations = P3, inconsistent naming across a feature = P2, string route syntax in new code = P3, magic strings for configuration = P2
+- Apply severity definitions from [severity-policy.md](../references/severity-policy.md)
+- Severity guide: convention violations are never P1. Most = P3. Inconsistent naming across a feature = P2, magic strings for configuration = P2. String route syntax in new code = P3.
 - Convention violations are lower severity than architectural or security issues; be constructive rather than pedantic
 - When the codebase has an established convention that differs from community standard, note the deviation but respect project consistency (flag for team discussion, not as a hard failure)
 - **Doc verification required**: Before flagging a pattern as incorrect, verify against the current framework documentation for the project's detected versions. Use this 3-tier lookup chain in order: (1) Boost `search-docs` MCP tool for Laravel/Filament/Livewire/Pest/Tailwind docs, (2) context7 MCP tool (`resolve-library-id` then `query-docs`) for broader library coverage, (3) WebFetch/WebSearch to the official documentation site as a last resort. Do not rely on training data alone -- framework APIs change between versions. If the review context includes framework versions (e.g., "Laravel 12, Filament 4, Livewire 3"), verify findings against those specific versions.

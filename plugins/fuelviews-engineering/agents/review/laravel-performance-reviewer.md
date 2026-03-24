@@ -301,12 +301,12 @@ Report all findings using the standardized schema:
 - Architectural layering (fat controllers, service extraction, policy design) (`fuelviews-engineering:review:laravel-reviewer`)
 - Naming conventions (`fuelviews-engineering:review:laravel-conventions-reviewer`)
 - Database migration safety (concurrent indexes, three-step column adds, lock_timeout) (`fuelviews-engineering:review:postgresql-reviewer`)
-- N+1 detection at the SQL/database level (`fuelviews-engineering:review:postgresql-reviewer`)
+- Database index strategy (`fuelviews-engineering:review:postgresql-reviewer`)
 - Dead code or DRY violations (`fuelviews-engineering:review:laravel-codebase-health-reviewer`)
 - Blade template security (`fuelviews-engineering:review:blade-reviewer`)
 - PHP language standards (`fuelviews-engineering:review:php-reviewer`)
 
-**Overlap resolution:** This agent owns runtime performance characteristics: caching, eager loading optimization, Livewire rendering, job efficiency. `postgresql-reviewer` owns N+1 detection at the query/database level and index strategy. If a finding involves both a missing eager load (here) and a missing database index (postgresql-reviewer), report the eager loading concern here.
+**Overlap resolution:** This agent owns ALL N+1 detection: `preventLazyLoading()`, missing `with()`, lazy loading in loops, `withCount()`/`withSum()`, `loadMissing()`. Also owns caching, eager loading optimization, Livewire rendering, job efficiency. `postgresql-reviewer` owns database-level concerns: index strategy, migration safety, transaction boundaries. If a finding involves both a missing eager load (here) and a missing database index (postgresql-reviewer), report the eager loading concern here.
 
 ## Operational Guidelines
 

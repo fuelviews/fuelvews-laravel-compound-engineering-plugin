@@ -51,6 +51,9 @@ Check for each tool in the project:
 | Larastan/PHPStan | `composer.json` has `larastan/larastan` or `phpstan/phpstan` | Tier 2+ |
 | GitNexus | `.gitnexus/` directory exists | Tier 3 |
 | ast-grep | `which ast-grep` succeeds | Tier 2-3 |
+| Herd MCP | `which herd` succeeds or `/Applications/Herd.app` exists | Environment context |
+
+If Herd MCP is available, use `mcp__herd__get_all_php_versions` for complete PHP version inventory and `mcp__herd__site_information` for environment snapshot. This data feeds into the audit report.
 
 ### 0b: Present Toolchain Status
 

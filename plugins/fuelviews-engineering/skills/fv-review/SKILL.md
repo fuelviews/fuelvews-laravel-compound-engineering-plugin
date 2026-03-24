@@ -122,6 +122,16 @@ Do NOT read reference files into the orchestrator context. Instead, instruct eac
 
 This keeps the orchestrator lean — reference content stays in subagent contexts only.
 
+#### Environment Context (Herd + Boost)
+
+If Herd MCP is available, call `mcp__herd__site_information` to get infrastructure context (PHP version, Node version, active services, site URL). This supplements Boost `application-info` with environment-level data. Include both in the review context passed to agents.
+
+If both Boost and Herd are available, construct a combined context string:
+```
+Environment: PHP X.Y, Laravel X.Y, MySQL X.Y (Herd), Redis running (Herd)
+Application: N models, M routes, K packages (Boost)
+```
+
 #### Automated Tooling Checks (run before agent dispatch)
 
 Run these tools on the PR diff to catch mechanical issues before agents spend tokens on them. For Laravel projects:
@@ -159,7 +169,7 @@ If `.gitnexus/` exists in the project root, run `detect_changes` on the diff bef
 
 **Parallel mode (default for ≤5 agents):**
 
-Run all configured review agents in parallel using Task tool. For each agent in the `review_agents` list:
+Run all configured review agents in parallel using Task tool (send all Task calls in a single message — do NOT poll, sleep, or shell out to check status). For each agent in the `review_agents` list:
 
 ```
 Task {agent-name}(PR diff + review context from settings body + return contract + reference-loading instruction)
@@ -177,7 +187,7 @@ For each agent in review_agents:
   4. Proceed to next agent
 ```
 
-Always run these last regardless of mode (can use `run_in_background: true` since findings are additive):
+Always run these last regardless of mode (can use `run_in_background: true` since findings are additive — you will be automatically notified when they complete, do NOT poll or shell out to check):
 - Task compound-engineering:review:agent-native-reviewer(PR diff) - Verify new features are agent-accessible
 - Task compound-engineering:research:learnings-researcher(PR diff) - Search docs/solutions/ for past issues. **Return contract:** relevant solution files with one-line summaries only.
 
@@ -565,14 +575,18 @@ Spawn a subagent to run browser tests (preserves main context):
 Task general-purpose("Run /test-browser for PR #[number]. Test all affected pages, check for console errors, handle failures by creating todos and fixing.")
 ```
 
-The subagent will:
+The subagent will use Chrome browser tools (claude-in-chrome MCP) when available, falling back to agent-browser CLI:
 1. Identify pages affected by the PR
-2. Navigate to each page and capture snapshots (using Playwright MCP or agent-browser CLI)
-3. Check for console errors
-4. Test critical interactions
-5. Pause for human verification on OAuth/email/payment flows
-6. Create P1 todos for any failures
-7. Fix and retry until all tests pass
+2. `tabs_context_mcp` to check browser state, then `navigate` to each affected page
+3. `read_page` for screenshots, `read_console_messages` for JS errors
+4. `read_network_requests` to verify API calls and catch N+1 HTTP requests
+5. For forms/interactions: `form_input` + `computer` to test flows
+6. For Livewire/Alpine: `javascript_tool` to verify component state
+7. Pause for human verification on OAuth/email/payment flows
+8. `gif_creator` to record key flows for PR documentation
+9. If Herd available: `debug_site` to capture execution context (queries, jobs, HTTP) for each test
+10. Create P1 todos for any failures
+11. Fix and retry until all tests pass
 
 **Standalone:** `/test-browser [PR number]`
 

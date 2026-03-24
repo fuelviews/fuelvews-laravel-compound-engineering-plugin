@@ -212,7 +212,7 @@ Update plan frontmatter: `pipeline_phase: 1`.
 Understand the project's conventions, existing patterns, and documented learnings. This is fast and local -- it informs whether external research is needed. Dispatch as subagents to keep their verbose output out of the orchestrator context.
 </thinking>
 
-Run these agents **in parallel**:
+Run these agents **in parallel** (send all Task calls in a single message — do NOT poll, sleep, or shell out to check status):
 
 - Task `compound-engineering:research:repo-research-analyst` with: technology, architecture, patterns, {feature_description}. Additionally instruct: "Use native tools (Glob, Grep, Read) and ast-grep for all code exploration. Do NOT use shell find/grep/wc/cat pipelines. Specifically search for **existing reusable infrastructure** this feature should leverage: service classes, helpers, traits, base classes, abstract classes, shared middleware, form request base classes, and action classes that already handle similar concerns. List each with file path and what it does. The goal is to prevent the plan from proposing new code that duplicates existing infrastructure."
   **Return contract:** Return ONLY: technology stack/versions detected, 3-5 most relevant file paths with line numbers, architectural patterns found, and a **Reusable Infrastructure** section listing existing services/helpers/traits the feature should use. Do NOT return full file contents.
@@ -316,7 +316,7 @@ Announce the decision. User can redirect if needed.
 
 ### 1.3 External Research (conditional)
 
-Only run if Phase 1.2 indicates value. Run in parallel using `run_in_background: true` (orchestrator can proceed to consolidation while these finish):
+Only run if Phase 1.2 indicates value. Run in parallel using `run_in_background: true`. You will be automatically notified when each agent completes — do NOT poll, sleep, or shell out to check status. Continue with Phase 1.4 consolidation while these finish:
 - Task `compound-engineering:research:best-practices-researcher` with: feature_description
   **Return contract:** Return ONLY: 3-5 actionable best practices with source URLs. No lengthy explanations.
 - Task `compound-engineering:research:framework-docs-researcher` with: feature_description
@@ -759,7 +759,7 @@ The review panel combines CE's architecture and security reviewers with fv's ful
 
 **Return contract for ALL review agents:** Return ONLY a structured findings list. Each finding must include: finding ID, severity (P1/P2/P3), file path, one-line summary. Do NOT return full code examples, detailed explanations, or lengthy recommendations — those stay in the subagent's analysis. The synthesis agent will request details for P1/P2 findings if needed.
 
-Launch in parallel:
+Launch in parallel (send all Task calls in a single message — do NOT poll, sleep, or shell out to check status):
 
 **fv Laravel reviewers (always):**
 - Task `fuelviews-engineering:review:laravel-reviewer` with: plan artifact path, affected file list, version context. Instruct: "Read `references/spatie-laravel.md`, `references/laravel-best-practices.md`, and `docs/ai/conventions.md` before reviewing."
@@ -1102,9 +1102,33 @@ Present the lock summary as formatted markdown:
 - <existing services/models/components the plan reuses>
 ```
 
+### 8.7 Compound Planning Learnings (conditional)
+
+The convergent review loop often surfaces valuable insights — approach decisions validated through review, architecture tradeoffs resolved, assumptions challenged and confirmed. Capture these before moving to implementation.
+
+**Detect compoundable insights:**
+- Resolved P1/P2 findings from the review loop — the resolution approach is institutional knowledge
+- Architecture decisions validated through multiple review rounds
+- Assumptions challenged during deepening that were confirmed or changed
+- Infrastructure discovered during research (Phase 1.1d) that future plans should know about
+- Approach changes — if the plan changed significantly from the initial draft through review rounds
+
+If NONE of these signals are present (straightforward plan, no surprises), skip compounding silently.
+
+**If signals present**, use **AskUserQuestion** (do NOT proceed without a response):
+
+1. "Compound learnings now" -- Capture planning insights to `docs/solutions/`
+2. "Skip" -- Nothing worth documenting
+
+If accepted, load the `ce:compound` skill from compound-engineering. Pass: plan artifact path, review deltas section, resolved findings, infrastructure discovered. One solution document per distinct learning.
+
+**Return contract:** The compounding skill writes to disk directly. Confirm the file path to the user.
+
+---
+
 ## Post-Generation Options
 
-After locking the plan, use **AskUserQuestion**: "Plan locked at `docs/plans/<filename>`. What would you like to do next?"
+After locking the plan (and optional compounding), use **AskUserQuestion**: "Plan locked at `docs/plans/<filename>`. What would you like to do next?"
 
 **Options:**
 1. **Open in editor** -- Run `open docs/plans/<filename>.md`

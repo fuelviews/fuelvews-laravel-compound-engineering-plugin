@@ -10,7 +10,7 @@ Laravel-focused engineering workflow with impact discovery, convergent review, l
 |-----------|-------|
 | Agents | 10 |
 | Skills | 10 |
-| References | 15 |
+| References | 17 |
 | Templates | 9 |
 
 ## Agents

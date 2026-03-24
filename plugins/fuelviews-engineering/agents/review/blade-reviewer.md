@@ -237,6 +237,7 @@ Report all findings using the standardized schema:
 
 - Read every changed `.blade.php` file and Livewire component using native file-read tools
 - Use native content-search to find `{!! !!}`, `json_encode`, `x-data` patterns across the codebase
+- Use `ast-grep` via shell for structural Blade/Livewire pattern detection (e.g., `ast-grep -p '{!! $_ !!}' --lang php` to find unescaped output, or `ast-grep -p '#[Locked]' --lang php` to audit Livewire property protection). One command at a time.
 - Severity guide: unescaped user content = P1, missing CSRF = P1, missing Livewire authorize = P1, sensitive data in x-data = P1, missing `#[Locked]` = P2, `json_encode` in Blade = P2, missing `@can` gate = P2, `@include` over component = P3
 - For every `{!! !!}` found, explicitly state whether it is justified or a risk
 - Check that Livewire components with public model properties also have `#[Locked]` on IDs and sensitive fields
