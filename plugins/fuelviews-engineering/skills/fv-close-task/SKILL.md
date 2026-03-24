@@ -166,6 +166,39 @@ Consider committing or stashing before closing.
 
 This does not block closure but is recorded in the closure summary.
 
+### Check 4: Code Quality Tools (Laravel projects)
+
+Run automated tooling checks on the full branch diff. Non-blocking — warnings only.
+
+```bash
+# Formatting clean?
+vendor/bin/pint --test
+
+# Static analysis passes?
+vendor/bin/phpstan analyse
+
+# No new Rector violations?
+vendor/bin/rector process --dry-run
+
+# Tests pass?
+php artisan test
+```
+
+For each tool that fails, add a warning to the closure summary:
+
+| Tool | Status | Details |
+|------|--------|---------|
+| Pint | PASS/WARN | <N> files need formatting |
+| PHPStan | PASS/WARN | <N> new errors (not in baseline) |
+| Rector | PASS/WARN | <N> violations found |
+| Tests | PASS/WARN | <N> failures |
+
+If any tool is not installed, use **AskUserQuestion**:
+1. "Install <tool> now" -- run the install command, create default config, re-run check
+2. "Skip <tool>"
+
+Install commands: `composer require laravel/pint --dev`, `composer require rector/rector driftingly/rector-laravel --dev`, `composer require larastan/larastan --dev`. Create default config files if missing — use the same defaults as `/fv:normalize` Phase 0d.
+
 ---
 
 ## Step 4: Generate Closure Summary

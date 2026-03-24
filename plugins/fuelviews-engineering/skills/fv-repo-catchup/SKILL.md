@@ -684,6 +684,7 @@ Present a formatted markdown summary:
 
 | Condition | Suggestion |
 |-----------|------------|
+| Risk zones or convention violations found | "Convention violations detected. Run `/fv:normalize` to audit and fix automatically." |
 | Active plans found | "Active plans detected. Run `/fv:start-session` to load context and resume work." |
 | No active plans, docs healthy | "Repo is onboarded. Run `/fv:plan` to start a new task." |
 | Uncertain plans exist | "N plans need human classification. Review the plan index at `docs/plans/_index.md`." |

@@ -122,6 +122,29 @@ Do NOT read reference files into the orchestrator context. Instead, instruct eac
 
 This keeps the orchestrator lean — reference content stays in subagent contexts only.
 
+#### Automated Tooling Checks (run before agent dispatch)
+
+Run these tools on the PR diff to catch mechanical issues before agents spend tokens on them. For Laravel projects:
+
+```bash
+# 1. Check formatting (fast, catches style issues agents shouldn't waste time on)
+vendor/bin/pint --test --dirty
+
+# 2. Static analysis on changed files
+vendor/bin/phpstan analyse
+
+# 3. Rector dry-run on changed files (catch convention violations)
+vendor/bin/rector process --dry-run
+```
+
+If any tool finds issues, include them in the review summary as automated findings (no agent needed).
+
+If any tool is not installed, use **AskUserQuestion**:
+1. "Install <tool> now" -- run the install command, create default config, then re-run
+2. "Skip <tool> for this review"
+
+Install commands: `composer require laravel/pint --dev`, `composer require rector/rector driftingly/rector-laravel --dev`, `composer require larastan/larastan --dev`. Create default config files if missing — use the same defaults as `/fv:normalize` Phase 0d.
+
 #### GitNexus Pre-Dispatch
 
 If `.gitnexus/` exists in the project root, run `detect_changes` on the diff before dispatching agents. Pass affected processes and transitive dependency information to each agent so they can assess broader impact.

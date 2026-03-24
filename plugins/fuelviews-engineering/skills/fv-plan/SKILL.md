@@ -214,7 +214,7 @@ Understand the project's conventions, existing patterns, and documented learning
 
 Run these agents **in parallel**:
 
-- Task `compound-engineering:research:repo-research-analyst` with: technology, architecture, patterns, {feature_description}. Additionally instruct: "Specifically search for **existing reusable infrastructure** this feature should leverage: service classes, helpers, traits, base classes, abstract classes, shared middleware, form request base classes, and action classes that already handle similar concerns. List each with file path and what it does. The goal is to prevent the plan from proposing new code that duplicates existing infrastructure."
+- Task `compound-engineering:research:repo-research-analyst` with: technology, architecture, patterns, {feature_description}. Additionally instruct: "Use native tools (Glob, Grep, Read) and ast-grep for all code exploration. Do NOT use shell find/grep/wc/cat pipelines. Specifically search for **existing reusable infrastructure** this feature should leverage: service classes, helpers, traits, base classes, abstract classes, shared middleware, form request base classes, and action classes that already handle similar concerns. List each with file path and what it does. The goal is to prevent the plan from proposing new code that duplicates existing infrastructure."
   **Return contract:** Return ONLY: technology stack/versions detected, 3-5 most relevant file paths with line numbers, architectural patterns found, and a **Reusable Infrastructure** section listing existing services/helpers/traits the feature should use. Do NOT return full file contents.
 - Task `compound-engineering:research:learnings-researcher` with: feature_description
   **Return contract:** Return ONLY: list of relevant solution files with one-line summary of each. If none found, say "No relevant learnings." Do NOT return full solution file contents.
@@ -238,6 +238,14 @@ Dispatch a single subagent to discover all reusable infrastructure. This keeps v
      - Find hooks: `ast-grep -p 'export function use$NAME($$$)' --lang tsx`
      Run one `ast-grep` command at a time, no chaining.
   3. **Native tools** (Glob, Grep, Read): For file discovery by path pattern and text content search. Use as supplement to the above, not primary.
+
+  **Tool selection rules:**
+  - Prefer native Glob over `find` — avoids permission prompts in subagent workflows
+  - Prefer native Grep over `grep -r` via shell — returns structured results, no parsing needed
+  - Prefer native Read over `cat`/`head`/`tail` — no permission prompts
+  - Do NOT use shell pipelines (`find | grep | wc`) — use multiple native tool calls instead
+  - Do NOT use `for f in $(find ...)` shell loops — use Glob then Read
+  - Shell is appropriate for: `ast-grep`, `git`, `composer`, `npm`, `artisan` commands (one at a time, no chaining)
 
   **Discover these categories (skip empty ones):**
 

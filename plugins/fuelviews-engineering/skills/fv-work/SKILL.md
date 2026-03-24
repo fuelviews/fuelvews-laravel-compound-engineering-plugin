@@ -127,6 +127,8 @@ This command takes a work document (plan, specification, or todo file) and execu
        (1) GitNexus `gitnexus_query`/`gitnexus_context` if `.gitnexus/` exists
        (2) `ast-grep` for structural matches (e.g., `ast-grep -p 'class $N extends Model'`)
        (3) Native Glob/Grep for path and text search
+       Prefer native tools (Glob, Grep, Read) over shell pipelines — avoids permission
+       prompts in subagent workflows. Shell is fine for ast-grep, git, composer, npm, artisan.
        Also check `composer.json`/`package.json` for packages. Apply these rules:
        * Models: NEVER create if entity exists — add relationships/scopes/casts instead
        * Enums: add cases to existing, don't create parallel ones
@@ -257,15 +259,31 @@ This command takes a work document (plan, specification, or todo file) and execu
 
 1. **Run Core Quality Checks**
 
-   Always run before submitting:
+   Always run before submitting. For Laravel projects, run these in order:
 
    ```bash
-   # Run full test suite (use project's test command)
-   # Examples: bin/rails test, npm test, pytest, go test, etc.
+   # 1. Format code
+   vendor/bin/pint
 
-   # Run linting (per AGENTS.md)
-   # Use linting-agent before pushing to origin
+   # 2. Static analysis (catches type errors, undefined methods, etc.)
+   vendor/bin/phpstan analyse
+
+   # 3. Check for Rector violations (dry-run — don't auto-fix during work)
+   vendor/bin/rector process --dry-run
+
+   # 4. Run full test suite
+   php artisan test
    ```
+
+   - If Pint fixes files, stage them with the current commit.
+   - If PHPStan reports new errors (not in baseline), fix them before submitting.
+   - If Rector dry-run finds violations, fix the ones related to your changes. Don't fix pre-existing violations in this PR.
+   - If any tool is not installed, use **AskUserQuestion**:
+     1. "Install <tool> now" -- run the install command, then re-run the check
+     2. "Skip <tool>" -- continue without it
+     Install commands: `composer require laravel/pint --dev`, `composer require rector/rector driftingly/rector-laravel --dev`, `composer require larastan/larastan --dev`. Create default config files (pint.json, rector.php, phpstan.neon) if missing — use the same defaults as `/fv:normalize` Phase 0d.
+
+   For non-Laravel projects, use the project's own test/lint commands per AGENTS.md.
 
 2. **Consider Reviewer Agents** (Optional)
 
