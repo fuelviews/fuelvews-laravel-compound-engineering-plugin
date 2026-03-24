@@ -2,6 +2,7 @@
 name: impact-assessment-agent
 description: "Performs evidence-based scope discovery and blast-radius mapping with confidence classification. Use when assessing the impact of a planned change, tracing dependencies, or discovering the full scope of a task before implementation."
 model: inherit
+effort: high
 ---
 
 <examples>

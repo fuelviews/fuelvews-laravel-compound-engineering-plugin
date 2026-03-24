@@ -2,6 +2,9 @@
 name: php-reviewer
 description: "Reviews PHP code for PSR-12 compliance, type safety, modern patterns, and clean style. Use when reviewing PHP files for standards compliance, type coverage, or modern PHP idioms."
 model: inherit
+effort: high
+skills:
+  - severity-policy-ref
 ---
 
 <examples>

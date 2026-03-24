@@ -2,6 +2,10 @@
 name: laravel-conventions-reviewer
 description: "Reviews Laravel naming conventions, structural patterns, route definitions, validation syntax, and adherence to Spatie and community best practices. Use when reviewing code for naming consistency, convention compliance, or Laravel idiomatic patterns."
 model: inherit
+effort: high
+skills:
+  - laravel-conventions-ref
+  - severity-policy-ref
 ---
 
 <examples>

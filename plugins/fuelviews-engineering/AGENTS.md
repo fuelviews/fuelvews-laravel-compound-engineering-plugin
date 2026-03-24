@@ -110,7 +110,13 @@ When adding or modifying skills, verify compliance:
 - [ ] Describe tools by capability class with platform hints
 - [ ] For shell-only workflows, use simple single commands without chaining
 
+## Script and File Path Convention
+
+When referencing scripts or files bundled with a skill, use `${CLAUDE_SKILL_DIR}` for path resolution. This resolves to the skill's directory at runtime regardless of working directory.
+
+Example: `bash ${CLAUDE_SKILL_DIR}/scripts/process.mjs`
+
 ## Adding Components
 
-- **New skill:** Create `skills/<name>/SKILL.md` with required YAML frontmatter (`name`, `description`). Add to README.md tables and update counts.
-- **New agent:** Create `agents/<category>/<name>.md` with frontmatter. Add to README.md and update counts.
+- **New skill:** Create `skills/<name>/SKILL.md` with required YAML frontmatter (`name`, `description`). Keep SKILL.md under 500 lines — move templates, tables, and reference content to `skills/<name>/references/`. Add to README.md tables and update counts.
+- **New agent:** Create `agents/<category>/<name>.md` with frontmatter. Add `effort` level and `skills` preloading where appropriate. Add to README.md and update counts.

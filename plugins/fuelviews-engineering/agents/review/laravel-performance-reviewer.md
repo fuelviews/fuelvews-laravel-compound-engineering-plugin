@@ -2,6 +2,10 @@
 name: laravel-performance-reviewer
 description: "Reviews Laravel runtime performance: eager loading, query optimization, caching strategy, queue job efficiency, Livewire rendering, and config/route caching. Use when reviewing code for performance bottlenecks, slow queries, or inefficient resource usage."
 model: inherit
+effort: high
+skills:
+  - laravel-conventions-ref
+  - severity-policy-ref
 ---
 
 <examples>

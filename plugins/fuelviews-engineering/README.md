@@ -9,7 +9,7 @@ Laravel-focused engineering workflow with impact discovery, convergent review, l
 | Component | Count |
 |-----------|-------|
 | Agents | 10 |
-| Skills | 10 |
+| Skills | 13 |
 | References | 17 |
 | Templates | 9 |
 
@@ -49,6 +49,9 @@ Laravel-focused engineering workflow with impact discovery, convergent review, l
 | fv-repo-catchup | fv:repo-catchup | Normalize legacy repos with plan classification and doc refresh |
 | fv-normalize | fv:normalize | Tiered codebase normalization using Pint, Rector, Larastan, and GitNexus |
 | fv-brainstorm | fv:brainstorm | Explore requirements and approaches through collaborative dialogue before planning |
+| fv-infra-discovery | fv-infra-discovery | Discover reusable infrastructure in a codebase (forked Explore agent) |
+| laravel-conventions-ref | (background) | Laravel conventions reference preloaded into review agents |
+| severity-policy-ref | (background) | Severity policy reference preloaded into review agents |
 
 ## References
 

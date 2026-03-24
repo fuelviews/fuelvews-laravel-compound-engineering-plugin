@@ -219,78 +219,15 @@ Run these agents **in parallel** (send all Task calls in a single message — do
 - Task `compound-engineering:research:learnings-researcher` with: feature_description
   **Return contract:** Return ONLY: list of relevant solution files with one-line summary of each. If none found, say "No relevant learnings." Do NOT return full solution file contents.
 
-### 1.1d Infrastructure Discovery (subagent)
+### 1.1d Infrastructure Discovery
 
-Dispatch a single subagent to discover all reusable infrastructure. This keeps verbose query results out of the orchestrator context.
+Invoke the `fv-infra-discovery` skill with the feature description. This runs in a forked Explore agent context — isolated, read-only, uses Haiku for speed. Verbose discovery results stay in the subagent context.
 
-- Task (general-purpose subagent) with: feature description, repo name. Instruct:
+```
+/fv-infra-discovery <feature_description>
+```
 
-  "Discover all existing reusable infrastructure this feature should leverage instead of creating from scratch. The goal is to prevent code drift and duplication.
-
-  **Tools (use in this priority order):**
-  1. **GitNexus** (if `.gitnexus/` exists): `gitnexus_query` for execution flows, `gitnexus_cypher` for graph queries, `gitnexus_context` for symbol details, `gitnexus://repo/{name}/clusters` for functional areas. Most accurate — understands call relationships and inheritance.
-  2. **`ast-grep`** (via shell): Use for structural pattern matching that Grep can't do. Examples:
-     - Find all classes extending Model: `ast-grep -p 'class $NAME extends Model' --lang php`
-     - Find all invokable controllers: `ast-grep -p 'public function __invoke($_$)' --lang php`
-     - Find all classes implementing ShouldQueue: `ast-grep -p 'class $NAME implements $$$ShouldQueue$$$' --lang php`
-     - Find all enums: `ast-grep -p 'enum $NAME' --lang php`
-     - Find React components: `ast-grep -p 'export function $NAME($$$)' --lang tsx`
-     - Find hooks: `ast-grep -p 'export function use$NAME($$$)' --lang tsx`
-     Run one `ast-grep` command at a time, no chaining.
-  3. **Native tools** (Glob, Grep, Read): For file discovery by path pattern and text content search. Use as supplement to the above, not primary.
-
-  **Tool selection rules:**
-  - Prefer native Glob over `find` — avoids permission prompts in subagent workflows
-  - Prefer native Grep over `grep -r` via shell — returns structured results, no parsing needed
-  - Prefer native Read over `cat`/`head`/`tail` — no permission prompts
-  - Do NOT use shell pipelines (`find | grep | wc`) — use multiple native tool calls instead
-  - Do NOT use `for f in $(find ...)` shell loops — use Glob then Read
-  - Shell is appropriate for: `ast-grep`, `git`, `composer`, `npm`, `artisan` commands (one at a time, no chaining)
-
-  **Discover these categories (skip empty ones):**
-
-  *Laravel backend:*
-  - Models — relationships, scopes, casts, observers, policies, factories
-  - Enums — statuses, types, categories, roles
-  - Config files — existing keys, env vars, feature flags
-  - Middleware — auth, tenant scoping, rate limiting, middleware groups
-  - Policies and gates
-  - Events, listeners, and subscribers
-  - Jobs — queue infrastructure, retry configs, unique locks
-  - Form requests — shared validation rules, base classes, rule traits
-  - Notifications and mailables — channels, base classes
-  - Services, actions, helpers, and traits
-  - Custom Eloquent casts
-  - Artisan commands — signatures, scheduling
-  - Factories and seeders
-  - Routes — groups, middleware stacks, prefixes
-  - Base classes and inheritance chains
-
-  *Blade / Livewire / Alpine:*
-  - Layouts (`resources/views/layouts/`)
-  - Partials and shared sections
-  - Blade components (class-based and anonymous)
-  - Livewire components and their state/actions
-  - Alpine.js component patterns
-
-  *JavaScript / TypeScript / React (check `package.json` first):*
-  - Shared components (`Components/`, `components/`, `src/components/`)
-  - Hooks and composables (`hooks/`, `composables/`)
-  - State management stores (Zustand, Pinia, Redux, etc.)
-  - Utility and helper modules (`utils/`, `lib/`, `helpers/`)
-  - API client and fetch wrappers
-  - TypeScript types and interfaces (`types/`, `interfaces/`)
-  - Layout components and shared UI primitives
-  - Existing page components for the same domain
-
-  *Installed packages:*
-  - `composer.json` require — packages that already provide needed capabilities
-  - `package.json` dependencies — npm packages for UI, utilities, integrations
-  - Package recommendations — well-maintained packages that could replace custom code
-
-  **Return format:** Structured summary with categories as headers. Each item: `- file/path — what it does / why it's relevant to this feature`. Target under 200 lines. Skip empty categories. End with a Packages section."
-
-  **Return contract:** Structured Reusable Infrastructure Summary only. No raw query results, no full file contents, no verbose listings. Under 200 lines.
+**Return contract:** Structured Reusable Infrastructure Summary under 200 lines. No raw query results or full file contents.
 
 Merge results with the repo-research-analyst output from Phase 1.1. Deduplicate. This combined list feeds Phase 2.3's reuse check.
 
@@ -316,7 +253,9 @@ Announce the decision. User can redirect if needed.
 
 ### 1.3 External Research (conditional)
 
-Only run if Phase 1.2 indicates value. Run in parallel using `run_in_background: true`. You will be automatically notified when each agent completes — do NOT poll, sleep, or shell out to check status. Continue with Phase 1.4 consolidation while these finish:
+Only run if Phase 1.2 indicates value. Run in parallel using `run_in_background: true`. You will be automatically notified when each agent completes — do NOT poll, sleep, or shell out to check status. Continue with Phase 1.4 consolidation while these finish.
+
+**Pre-approved permissions for background agents:** Read, Grep, Glob, WebFetch, WebSearch. Ensure these are approved before launching.
 - Task `compound-engineering:research:best-practices-researcher` with: feature_description
   **Return contract:** Return ONLY: 3-5 actionable best practices with source URLs. No lengthy explanations.
 - Task `compound-engineering:research:framework-docs-researcher` with: feature_description
@@ -360,252 +299,7 @@ Incorporate identified gaps or edge cases.
 
 ### 2.2 Choose Implementation Detail Level
 
-Select detail level based on complexity. All templates share the same frontmatter schema and end with `## Review Deltas` (populated by the convergent loop).
-
-**Shared frontmatter for all detail levels:**
-
-```yaml
----
-title: [Issue Title]
-type: [feat|fix|refactor]
-status: drafting
-canonical: true
-task_slug: <slug>
-pipeline_phase: 2
-review_rounds_completed: 0
-convergence_round: 0
-deepen_count: 0
-max_review_rounds: 4
-date: YYYY-MM-DD
-origin: <brainstorm path or omit>
-excluded_findings: []
-findings_summary:
-  p1: 0
-  p2: 0
-  p3: 0
-  resolved: 0
-  excluded: 0
-context_budget:
-  used_pct: 0
-  compression_level: none
----
-```
-
-#### MINIMAL (Quick Issue)
-
-**Best for:** Simple bugs, small improvements, clear features
-
-**Body sections:**
-
-```markdown
-# [Issue Title]
-
-[Brief problem/feature description]
-
-## Acceptance Criteria
-
-- [ ] Core requirement 1
-- [ ] Core requirement 2
-
-## Context
-
-[Any critical information]
-
-## Impact References
-
-- Impact artifact: `docs/impact/<task-slug>.md`
-
-## Sources
-
-- **Origin document:** [path](path) -- if from brainstorm, otherwise omit
-- Related issue: #[issue_number]
-
-## Review Deltas
-
-<!-- Populated by convergent review loop -->
-```
-
-#### MORE (Standard Issue)
-
-**Best for:** Most features, complex bugs, team collaboration
-
-**Body sections (adds to MINIMAL):**
-
-```markdown
-# [Issue Title]
-
-## Overview
-
-[Comprehensive description]
-
-## Problem Statement / Motivation
-
-[Why this matters]
-
-## Proposed Solution
-
-[High-level approach]
-
-## Technical Considerations
-
-- Architecture impacts
-- Performance implications
-- Security considerations
-
-## System-Wide Impact
-
-- **Interaction graph**: [What callbacks/middleware/observers fire?]
-- **Error propagation**: [How do errors flow across layers?]
-- **State lifecycle risks**: [Can partial failure leave inconsistent state?]
-- **API surface parity**: [Other interfaces needing the same change?]
-- **Integration test scenarios**: [Cross-layer scenarios unit tests miss]
-
-## Acceptance Criteria
-
-- [ ] Detailed requirement 1
-- [ ] Testing requirements
-
-## Success Metrics
-
-[How we measure success]
-
-## Dependencies & Risks
-
-[What could block or complicate this]
-
-## Impact References
-
-- Impact artifact: `docs/impact/<task-slug>.md`
-
-## Sources & References
-
-- **Origin document:** [path](path) -- if from brainstorm
-- Similar implementations: [file_path:line_number]
-- Best practices: [documentation_url]
-
-## Review Deltas
-
-<!-- Populated by convergent review loop -->
-```
-
-#### A LOT (Comprehensive Issue)
-
-**Best for:** Major features, architectural changes, complex integrations
-
-**Body sections (adds to MORE):**
-
-```markdown
-# [Issue Title]
-
-## Overview
-
-[Executive summary]
-
-## Problem Statement
-
-[Detailed problem analysis]
-
-## Proposed Solution
-
-[Comprehensive solution design]
-
-## Technical Approach
-
-### Architecture
-[Detailed technical design]
-
-### Implementation Phases
-
-#### Phase 1: [Foundation]
-- Tasks, success criteria, estimated effort
-
-#### Phase 2: [Core Implementation]
-- Tasks, success criteria, estimated effort
-
-#### Phase 3: [Polish & Optimization]
-- Tasks, success criteria, estimated effort
-
-## Alternative Approaches Considered
-
-[Other solutions evaluated and why rejected]
-
-## System-Wide Impact
-
-### Interaction Graph
-[Chain reaction map: callbacks, middleware, observers, event handlers. Trace 2+ levels deep.]
-
-### Error & Failure Propagation
-[Trace errors from lowest layer up. Exception classes, retry conflicts, silent failures.]
-
-### State Lifecycle Risks
-[Partial failure scenarios: orphaned rows, stale caches, duplicate records.]
-
-### API Surface Parity
-[All interfaces exposing equivalent functionality. Which need updating.]
-
-### Integration Test Scenarios
-[3-5 cross-layer scenarios unit tests with mocks would miss.]
-
-## Acceptance Criteria
-
-### Functional Requirements
-- [ ] Detailed functional criteria
-
-### Non-Functional Requirements
-- [ ] Performance targets
-- [ ] Security requirements
-
-### Quality Gates
-- [ ] Test coverage requirements
-- [ ] Code review approval
-
-## Success Metrics
-
-[Detailed KPIs and measurement methods]
-
-## Dependencies & Prerequisites
-
-[Detailed dependency analysis]
-
-## Risk Analysis & Mitigation
-
-[Comprehensive risk assessment]
-
-## Future Considerations
-
-[Extensibility and long-term vision]
-
-## Documentation Plan
-
-[What docs need updating]
-
-## Impact References
-
-- Impact artifact: `docs/impact/<task-slug>.md`
-
-## Sources & References
-
-### Origin
-- **Origin document:** [path](path) -- key decisions carried forward: [list]
-
-### Internal References
-- Architecture decisions: [file_path:line_number]
-- Similar features: [file_path:line_number]
-
-### External References
-- Framework documentation: [url]
-- Best practices guide: [url]
-
-### Related Work
-- Previous PRs: #[pr_numbers]
-- Related issues: #[issue_numbers]
-
-## Review Deltas
-
-<!-- Populated by convergent review loop -->
-```
-
-For code examples, use PHP with Laravel conventions (e.g., `app/Services/ExampleService.php`).
+Select detail level based on complexity. Use the frontmatter schema from Phase 0.7 (update `pipeline_phase: 2`). Select the appropriate body template from [plan-templates.md](references/plan-templates.md): MINIMAL, MORE, or A LOT. Use PHP with Laravel conventions for code examples.
 
 ### 2.3 Generate or Revise Plan
 
@@ -615,29 +309,7 @@ On first pass, generate from scratch. On revision, incorporate review findings w
 
 **Round 0 (first pass):**
 
-1. **Reuse check (before drafting):** Cross-reference the proposed feature against the Reusable Infrastructure list from Phase 1.1/1.1d. For every new artifact the plan proposes creating, apply the appropriate rule:
-
-   - **Models:** NEVER create a new model if the entity exists. Add relationships, scopes, casts, or accessors to the existing model. Use `gitnexus_context` to understand existing relationships, observers, and policies before modifying. Verify new tables represent genuinely new entities.
-   - **Enums:** Add cases to existing enums. Don't create parallel enums for the same domain concept under a different name.
-   - **Config:** Add keys to existing config files. Don't create new config files unless the domain is genuinely distinct. Check existing env vars and feature flags.
-   - **Components:** Compose or extend existing Blade/Livewire components via slots/props. Check both class-based and anonymous components.
-   - **Middleware:** Use existing middleware stacks (auth, tenant, rate limiting). Don't add inline request checks when middleware already handles the concern. Add new routes to existing middleware groups.
-   - **Policies:** If a model has a policy, add gates to it. NEVER scatter authorization in controllers when a policy exists.
-   - **Events/Listeners:** Attach new listeners to existing events for side effects. Don't create direct side effects that bypass the event system. Only create new events for genuinely new domain actions.
-   - **Form Requests:** Check for existing Store/Update request pairs and shared validation rule traits. Extract common rules rather than duplicating across requests.
-   - **Jobs:** Reuse existing queue infrastructure, retry configs, and unique-lock patterns. Don't create parallel job pipelines for related concerns.
-   - **Notifications/Mailables:** Extend existing notification channels and mailable base classes.
-   - **Services/Actions/Helpers/Traits:** Reference existing infrastructure by file path. Extend or compose rather than duplicate. Use `gitnexus_context` to understand the contract before proposing extensions.
-   - **Casts:** Reuse existing custom casts (money, JSON, encrypted). Don't reinvent them.
-   - **Composer/npm packages:** Before proposing custom code, verify an installed package doesn't already provide the capability. Also consider whether a well-maintained package is a better solution than custom code.
-   - **Factories/Seeders:** If a model has a factory, update it with new fields/states. Don't create test data manually.
-   - **Routes:** Add to existing route groups and middleware stacks. Don't create new route files unless the domain is genuinely separate.
-   - **Commands:** Add options/subcommands to existing Artisan commands for the same domain. Check scheduler for existing scheduled tasks before creating new ones.
-   - **Blade views:** Extend existing layouts. Include existing partials. Use existing component slots. Don't recreate shared UI that already exists.
-   - **JS/TS components:** Reuse existing shared components, hooks/composables, utility modules, and API wrappers. Don't create parallel UI primitives (buttons, modals, cards) that already exist. Extend existing stores rather than creating parallel state.
-   - **TypeScript types:** Use existing type definitions and interfaces. Extend existing types rather than creating overlapping ones.
-   - **Base classes:** Extend existing hierarchies rather than creating parallel ones.
-   - **No match:** Only then propose creating a new artifact. Note in the plan why existing infrastructure doesn't fit.
+1. **Reuse check (before drafting):** Cross-reference the proposed feature against the Reusable Infrastructure list from Phase 1.1/1.1d. Apply the rules in [infrastructure-reuse-rules.md](references/infrastructure-reuse-rules.md) for every new artifact the plan proposes creating.
 
 2. Populate architecture decisions, implementation steps (with file references from impact edit set), test plan, risks (from blind spots + research), acceptance criteria. Implementation steps should reference existing infrastructure by file path wherever possible.
 
@@ -685,45 +357,7 @@ Add the impact artifact path to the plan's "Impact References" section.
 
 **GATE: User must review the plan and impact before entering the review loop.**
 
-Present the plan and impact as a well-formatted markdown summary:
-
-```markdown
-## Plan Draft (Round <N>)
-
-**Task:** <task title>
-**Slug:** <task-slug>
-**Plan:** `docs/plans/<filename>.md`
-**Impact:** `docs/impact/<task-slug>.md`
-
-### Key Decisions
-- <decision 1>
-- <decision 2>
-
-### Implementation Approach
-<brief summary>
-
-### Plan Stats
-
-| Metric | Count |
-|--------|-------|
-| Architecture decisions | <N> |
-| Implementation steps | <N> |
-| Tests planned | <N> |
-| Risks identified | <N> |
-
-### Impact Assessment
-
-| Confidence | Files |
-|------------|-------|
-| Definite | <N> |
-| Probable | <N> |
-| Possible | <N> |
-| Blind spots | <N> |
-
-### Reusable Infrastructure Leveraged
-- <existing service/model/component referenced in plan>
-- <existing service/model/component referenced in plan>
-```
+Present the plan and impact using the Plan Draft Summary format from [presentation-formats.md](references/presentation-formats.md).
 
 Use **AskUserQuestion** to present these options (do NOT proceed without a response):
 
@@ -808,37 +442,7 @@ Write synthesis results to "Review Deltas" section. Update `findings_summary` an
 
 **GATE: User must review findings before the loop continues.**
 
-Present the synthesis as a well-formatted markdown summary. Use this structure:
-
-```markdown
-## Plan Review Round <N> Findings
-
-**Reviewers:** <list of agents that ran>
-**Total findings:** <count> (<new> new, <resolved> resolved from prior rounds)
-
-### Consensus (multiple reviewers agree)
-
-| Finding | Severity | File | Summary |
-|---------|----------|------|---------|
-| FV-NNNN | P1/P2/P3 | path:line | one-line summary |
-
-### Unique Callouts
-
-**<Agent Name>:**
-- FV-NNNN (P2) path:line -- summary
-
-### Summary
-
-| Severity | Count | Status |
-|----------|-------|--------|
-| P1 (blocking) | <N> | Must resolve before lock |
-| P2 (should fix) | <N> | Address or defer with rationale |
-| P3 (minor) | <N> | Optional |
-
-### Impact on Scope
-
-<If findings introduce new files or change the edit set, note here. Otherwise: "No scope change.">
-```
+Present the synthesis using the Review Findings Summary format from [presentation-formats.md](references/presentation-formats.md).
 
 Use **AskUserQuestion** to present these options (do NOT proceed without a response):
 
@@ -890,24 +494,7 @@ Append new round data: confidence counts, new entries in edit/read/watchlist/bli
 
 ### 5.4 Present Impact Delta to User (only if scope changed)
 
-If the impact assessment discovered new scope (new files, blind spots, or confidence changes), present the delta as formatted markdown:
-
-```markdown
-## Impact Update (Round <N>, depth: <depth>)
-
-### Scope Delta
-
-| Change | Count |
-|--------|-------|
-| New definite files | <N> |
-| New probable files | <N> |
-| New blind spots | <N> |
-| Resolved blind spots | <N> |
-
-### New Discoveries
-- `<file/component>` -- <reason>
-- `<file/component>` -- <reason>
-```
+If the impact assessment discovered new scope, present using the Impact Delta Summary format from [presentation-formats.md](references/presentation-formats.md).
 
 Use **AskUserQuestion** to present these options (do NOT proceed without a response):
 
@@ -970,21 +557,7 @@ Actions:
 3. Update plan: expanded risk analysis, alternatives evaluated, hidden dependencies surfaced
 4. Increment `deepen_count`
 
-**GATE: Present deepen results** as formatted markdown:
-
-```markdown
-## Deepen Pass <deepen_count> Results
-
-| Category | Count |
-|----------|-------|
-| New risks discovered | <N> |
-| Alternative approaches evaluated | <N> |
-| Hidden dependencies surfaced | <N> |
-
-### Key Findings
-- <finding summary>
-- <finding summary>
-```
+**GATE: Present deepen results** using the Deepen Results Summary format from [presentation-formats.md](references/presentation-formats.md).
 
 Use **AskUserQuestion** to present these options (do NOT proceed without a response):
 
@@ -1076,31 +649,7 @@ Check: valid frontmatter, finding ID consistency, summary count accuracy, lock s
 
 ### 8.6 Output Summary
 
-Present the lock summary as formatted markdown:
-
-```markdown
-## Plan Locked
-
-| Field | Value |
-|-------|-------|
-| Plan | `docs/plans/<filename>.md` |
-| Impact | `docs/impact/<task-slug>.md` |
-| Slug | `<task-slug>` |
-| Rounds completed | <N> |
-| Watchlist items | <N> |
-| Blind spots | <N> |
-
-### Findings Summary
-
-| Severity | Total | Resolved | Excluded | Open |
-|----------|-------|----------|----------|------|
-| P1 | <N> | <N> | <N> | <N> |
-| P2 | <N> | <N> | <N> | <N> |
-| P3 | <N> | <N> | <N> | <N> |
-
-### Infrastructure Leveraged
-- <existing services/models/components the plan reuses>
-```
+Present using the Lock Summary format from [presentation-formats.md](references/presentation-formats.md).
 
 ### 8.7 Compound Planning Learnings (conditional)
 
@@ -1149,71 +698,12 @@ Loop back to options after changes until user selects a final action.
 
 ## Issue Creation
 
-When user selects "Create Issue", detect their project tracker from AGENTS.md:
-
-1. **Check for tracker preference** in AGENTS.md (global or project). Fall back to CLAUDE.md:
-   - Look for `project_tracker: github` or `project_tracker: linear`
-
-2. **If GitHub:**
-   ```bash
-   gh issue create --title "<type>: <title>" --body-file <plan_path>
-   ```
-
-3. **If Linear:**
-   ```bash
-   linear issue create --title "<title>" --description "$(cat <plan_path>)"
-   ```
-
-4. **If no tracker configured:**
-   Ask user: "Which project tracker do you use? (GitHub/Linear/Other)"
-   Suggest adding `project_tracker:` to AGENTS.md.
-
-5. **After creation:** Display the issue URL, offer `/fv:work`.
+See [issue-creation.md](references/issue-creation.md) for tracker detection and issue creation workflow.
 
 ---
 
-# Checkpoint and Resume Protocol
+## Checkpoint, Resume, and Error Recovery
 
-At every phase boundary, update frontmatter: `pipeline_phase`, `review_rounds_completed`, `convergence_round`, `deepen_count`, `context_budget` (used_pct, compression_level).
-
-### Context Pressure Checkpoint
-
-If `used_pct > 80%`: emergency summarize, write full findings to disk, set `status: parked`, instruct user to `--resume`.
-
-### User Interruption
-
-Save state to frontmatter, set `status: parked`, report checkpoint phase and resume instructions.
-
----
-
-# Progressive Summarization Between Rounds
-
-Apply compression matrix from [convergent-planning-loop.md](./references/convergent-planning-loop.md): full -> compressed -> ultra-compressed -> minimal as rounds advance. Current round always gets full fidelity.
-
-After each round (post Phase 4): write full findings to disk (append, never overwrite), generate compressed version, update `compression_level`, escalate if still over budget.
-
----
-
-# Loop Invariants
-
-1. `pipeline_phase` matches actual execution phase.
-2. `convergence_round` never decreases.
-3. `deepen_count` never exceeds 2.
-4. Every finding has unique ID (`FV-RNNN`) persisting across rounds.
-5. No finding deleted -- only resolved, excluded, or subsumed.
-6. `used_pct` never exceeds 80% entering a new phase.
-
----
-
-# Error Recovery
-
-| Failure Mode | Recovery Action |
-|---|---|
-| Agent timeout during COLLECT | Retry once, then mark scope as skipped |
-| Frontmatter parse error | Attempt YAML repair, escalate if ambiguous |
-| Context budget exceeded mid-phase | Emergency summarize, continue phase |
-| Conflicting findings (same ID, different severity) | Keep higher severity, log conflict |
-| User interrupts mid-loop | Save state, set status=parked |
-| Gate fails 2x consecutively | Escalate to user with failure details |
+See [error-recovery.md](references/error-recovery.md) for checkpoint protocol, progressive summarization, loop invariants, and error recovery table.
 
 NEVER CODE! Just research and write the plan.

@@ -2,6 +2,10 @@
 name: javascript-reviewer
 description: "Reviews Alpine.js patterns, Livewire JavaScript interop, async handling, DOM safety, and client-side state management. Use when reviewing JavaScript files, Alpine.js components, or Livewire front-end interactions."
 model: inherit
+effort: high
+skills:
+  - laravel-conventions-ref
+  - severity-policy-ref
 ---
 
 <examples>

@@ -2,6 +2,7 @@
 name: synthesis-agent
 description: "Deduplicates findings across reviewers, synthesizes severity, produces structured watchlists, and generates next-action recommendations. Use when consolidating review results from multiple agents or producing a final review summary."
 model: inherit
+effort: medium
 ---
 
 <examples>

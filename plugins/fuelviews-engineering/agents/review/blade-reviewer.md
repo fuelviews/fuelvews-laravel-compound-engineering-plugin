@@ -2,6 +2,10 @@
 name: blade-reviewer
 description: "Reviews Blade templates, Livewire components, and Alpine.js integration for XSS safety, CSRF protection, component patterns, and secure data transfer. Use when reviewing Blade views, Livewire components, or front-end integration code."
 model: inherit
+effort: high
+skills:
+  - laravel-conventions-ref
+  - severity-policy-ref
 ---
 
 <examples>

@@ -187,7 +187,7 @@ For each agent in review_agents:
   4. Proceed to next agent
 ```
 
-Always run these last regardless of mode (can use `run_in_background: true` since findings are additive — you will be automatically notified when they complete, do NOT poll or shell out to check):
+Always run these last regardless of mode (can use `run_in_background: true` since findings are additive — you will be automatically notified when they complete, do NOT poll or shell out to check). **Pre-approved permissions for background agents:** Read, Grep, Glob.
 - Task compound-engineering:review:agent-native-reviewer(PR diff) - Verify new features are agent-accessible
 - Task compound-engineering:research:learnings-researcher(PR diff) - Search docs/solutions/ for past issues. **Return contract:** relevant solution files with one-line summaries only.
 

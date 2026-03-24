@@ -2,6 +2,9 @@
 name: postgresql-reviewer
 description: "Reviews database queries, migrations, indexing strategy, transaction safety, and PostgreSQL-specific patterns. Use when reviewing migrations, query performance, database schema changes, or job/queue database interactions."
 model: inherit
+effort: high
+skills:
+  - severity-policy-ref
 ---
 
 <examples>

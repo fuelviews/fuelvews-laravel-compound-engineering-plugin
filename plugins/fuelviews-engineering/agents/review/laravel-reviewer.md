@@ -2,6 +2,10 @@
 name: laravel-reviewer
 description: "Reviews Laravel application code for architectural layering, service boundaries, authorization, Eloquent patterns, and framework best practices. Use when reviewing controllers, models, services, middleware, or any Laravel-specific application logic."
 model: inherit
+effort: high
+skills:
+  - laravel-conventions-ref
+  - severity-policy-ref
 ---
 
 <examples>

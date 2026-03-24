@@ -2,6 +2,10 @@
 name: laravel-codebase-health-reviewer
 description: "Reviews codebase for dead code, unused imports, orphaned routes, duplicated logic, God classes, and DRY violations. Use when auditing code health, cleaning up technical debt, or checking for unused or duplicated code."
 model: inherit
+effort: high
+skills:
+  - laravel-conventions-ref
+  - severity-policy-ref
 ---
 
 <examples>

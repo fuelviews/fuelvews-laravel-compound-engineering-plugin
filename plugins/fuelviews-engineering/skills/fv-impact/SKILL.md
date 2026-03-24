@@ -1,7 +1,9 @@
 ---
 name: fv:impact
-description: Run a standalone impact assessment diagnostic. Use when checking blast radius, verifying scope drift, or comparing approaches without modifying a plan.
+description: Run a standalone impact assessment diagnostic. Use when checking blast radius or scope drift.
 argument-hint: "[task-slug, plan path, or file path to assess]"
+allowed-tools: Read, Grep, Glob, Bash(git *), Bash(ast-grep *), Bash(gitnexus *), Bash(npx gitnexus *)
+effort: high
 ---
 
 # Standalone Impact Assessment
