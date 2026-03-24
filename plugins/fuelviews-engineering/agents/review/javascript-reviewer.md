@@ -290,6 +290,7 @@ Report all findings using the standardized schema:
 ## Operational Guidelines
 
 - Read every changed `.js` file and scan `.blade.php` files for inline Alpine code using native file-read and content-search tools
+- Use `ast-grep` via shell for structural JS/TS pattern detection (e.g., `ast-grep -p 'addEventListener($$$)' --lang js` to find event listeners missing cleanup, or `ast-grep -p 'async function $NAME($$$)' --lang js` to find async functions). One command at a time.
 - Severity guide: sensitive data in client state = P1, innerHTML with user content = P1, no async error handling = P2, missing loading state reset = P2, global scope pollution = P2, missing debounce = P3, missing x-cloak = P3
 - When reviewing Livewire + Alpine interaction, trace the data flow from server to client and back
 - Check for proper cleanup in component `destroy()` callbacks

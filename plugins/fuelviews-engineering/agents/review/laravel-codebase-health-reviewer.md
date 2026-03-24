@@ -243,6 +243,7 @@ Report all findings using the standardized schema:
 ## Operational Guidelines
 
 - Use native content-search and file-search tools to trace references; avoid shell commands for routine discovery
+- Use `ast-grep` via shell for structural dead-code detection (e.g., `ast-grep -p 'public function $NAME($$$) { }' --lang php` to find empty methods, or structural pattern matching to find unused class declarations). One command at a time.
 - When flagging unused methods, verify by searching for the method name across the entire codebase before reporting
 - When flagging duplicated logic, show at least 2 locations and the extracted version
 - Severity guide: God class > 500 LOC = P2, duplicated query logic in 3+ places = P2, unused public method = P3, unused import = P3, commented-out code = P3, orphaned route to non-existent controller = P2

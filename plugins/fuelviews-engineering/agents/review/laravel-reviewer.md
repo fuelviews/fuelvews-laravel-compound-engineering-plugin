@@ -301,6 +301,7 @@ Report all findings using the standardized schema:
 ## Operational Guidelines
 
 - Read every changed Laravel file using native file-read tools
+- Use `ast-grep` via shell for structural pattern matching when needed (e.g., `ast-grep -p 'class $N extends Controller' --lang php` to find all controllers, or `ast-grep -p 'public function __invoke($_$)' --lang php` to find invokable controllers). One command at a time, no chaining.
 - Use native content-search tools to find patterns; avoid shell commands for routine file discovery
 - Check `AppServiceProvider::boot()` for `Model::shouldBeStrict()` on every review
 - Severity guide: missing authorization = P1, business logic in controller = P2, inline validation = P2, `env()` in app code = P2, missing eager loading declaration = P3, missing route model binding = P3

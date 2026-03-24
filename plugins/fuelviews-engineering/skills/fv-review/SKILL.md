@@ -113,13 +113,14 @@ Before dispatching agents, determine framework versions via Boost `application-i
 
 #### Reference Loading
 
-Read and pass the following reference content (not just file paths) to each fv review agent alongside the PR content and version context:
+Do NOT read reference files into the orchestrator context. Instead, instruct each fv review agent to read these files itself as part of its review:
 
-1. `references/spatie-laravel.md` -- Spatie Laravel guidelines (naming, routing, controllers, config, authorization)
-2. `references/laravel-best-practices.md` -- alexeymezenin best practices (SRP, fat models, DRY, Eloquent, validation, IoC)
-3. `docs/ai/conventions.md` -- repo-specific conventions (if exists in the target project)
+1. `references/spatie-laravel.md` -- Spatie Laravel guidelines
+2. `references/laravel-best-practices.md` -- alexeymezenin best practices
+3. `docs/ai/conventions.md` -- repo-specific conventions (if exists)
+4. Boost `mcp__laravel-boost__search-docs` (if available, for topics the PR touches)
 
-If Boost MCP is available, also fetch relevant docs via `mcp__laravel-boost__search-docs` for topics the PR touches.
+This keeps the orchestrator lean — reference content stays in subagent contexts only.
 
 #### GitNexus Pre-Dispatch
 
@@ -129,29 +130,33 @@ If `.gitnexus/` exists in the project root, run `detect_changes` on the diff bef
 
 <parallel_tasks>
 
+**Return contract for ALL review agents:** Instruct each agent: "Return ONLY a structured findings list. Each finding: severity (P1/P2/P3), file path:line, one-line summary, effort estimate. Do NOT return full code examples, detailed reasoning, or lengthy recommendations — keep those in your analysis context. The synthesis agent will request details for P1/P2 findings if needed."
+
+**For fv review agents**, also instruct: "Read `references/spatie-laravel.md`, `references/laravel-best-practices.md`, and `docs/ai/conventions.md` before reviewing. Use Boost `search-docs` if available."
+
 **Parallel mode (default for ≤5 agents):**
 
 Run all configured review agents in parallel using Task tool. For each agent in the `review_agents` list:
 
 ```
-Task {agent-name}(PR content + review context from settings body)
+Task {agent-name}(PR diff + review context from settings body + return contract + reference-loading instruction)
 ```
 
 **Serial mode (--serial flag, or auto for 6+ agents):**
 
-Run configured review agents ONE AT A TIME. For each agent in the `review_agents` list, wait for it to complete before starting the next:
+Run configured review agents ONE AT A TIME. For each agent:
 
 ```
 For each agent in review_agents:
-  1. Task {agent-name}(PR content + review context)
+  1. Task {agent-name}(PR diff + review context + return contract + reference-loading instruction)
   2. Wait for completion
-  3. Collect findings
+  3. Collect structured findings
   4. Proceed to next agent
 ```
 
-Always run these last regardless of mode:
-- Task compound-engineering:review:agent-native-reviewer(PR content) - Verify new features are agent-accessible
-- Task compound-engineering:research:learnings-researcher(PR content) - Search docs/solutions/ for past issues related to this PR's modules and patterns
+Always run these last regardless of mode (can use `run_in_background: true` since findings are additive):
+- Task compound-engineering:review:agent-native-reviewer(PR diff) - Verify new features are agent-accessible
+- Task compound-engineering:research:learnings-researcher(PR diff) - Search docs/solutions/ for past issues. **Return contract:** relevant solution files with one-line summaries only.
 
 </parallel_tasks>
 
@@ -316,7 +321,7 @@ Remove duplicates, prioritize by severity and impact.
 - [ ] Collect findings from all parallel agents
 - [ ] Surface learnings-researcher results: if past solutions are relevant, flag them as "Known Pattern" with links to docs/solutions/ files
 - [ ] Discard any findings that recommend deleting or gitignoring files in `docs/brainstorms/`, `docs/plans/`, or `docs/solutions/` (see Protected Artifacts above)
-- [ ] Run `fuelviews-engineering:workflow:synthesis-agent` for 3-layer dedup before creating todos
+- [ ] Run `fuelviews-engineering:workflow:synthesis-agent` for 3-layer dedup before creating todos. **Return contract:** deduplicated findings list (ID, severity, file, summary, effort), counts by severity, escalation actions taken. No dedup reasoning.
 - [ ] Categorize by type: security, performance, architecture, quality, etc.
 - [ ] Assign severity levels: 🔴 CRITICAL (P1), 🟡 IMPORTANT (P2), 🔵 NICE-TO-HAVE (P3)
 - [ ] Remove duplicate or overlapping findings
@@ -445,97 +450,50 @@ Examples:
 
 #### Step 3: Summary Report
 
-After creating all todo files, present comprehensive summary:
+After creating all todo files, present a clean summary:
 
 ````markdown
-## ✅ Code Review Complete
+## Code Review Complete
 
-**Review Target:** PR #XXXX - [PR Title] **Branch:** [branch-name]
+**PR:** #XXXX - [PR Title]
+**Branch:** [branch-name]
+**Agents:** [comma-separated list of agents used]
 
-### Findings Summary:
+### Findings
 
-- **Total Findings:** [X]
-- **🔴 CRITICAL (P1):** [count] - BLOCKS MERGE
-- **🟡 IMPORTANT (P2):** [count] - Should Fix
-- **🔵 NICE-TO-HAVE (P3):** [count] - Enhancements
+| Severity | Count | Todos Created |
+|----------|-------|---------------|
+| P1 (blocks merge) | <N> | `001-pending-p1-*.md`, ... |
+| P2 (should fix) | <N> | `003-pending-p2-*.md`, ... |
+| P3 (nice to have) | <N> | `005-pending-p3-*.md`, ... |
 
-### Created Todo Files:
+### P1 Findings (must resolve)
 
-**P1 - Critical (BLOCKS MERGE):**
+| File | Finding | Todo |
+|------|---------|------|
+| path:line | one-line summary | `NNN-pending-p1-*.md` |
 
-- `001-pending-p1-{finding}.md` - {description}
-- `002-pending-p1-{finding}.md` - {description}
+### Consensus (multiple reviewers flagged)
 
-**P2 - Important:**
+| Finding | Reviewers | Severity |
+|---------|-----------|----------|
+| summary | agent1, agent2 | P2 |
 
-- `003-pending-p2-{finding}.md` - {description}
-- `004-pending-p2-{finding}.md` - {description}
+### Next Steps
 
-**P3 - Nice-to-Have:**
-
-- `005-pending-p3-{finding}.md` - {description}
-
-### Review Agents Used:
-
-- laravel-reviewer
-- security-sentinel
-- performance-oracle
-- architecture-strategist
-- agent-native-reviewer
-- [other agents]
-
-### Next Steps:
-
-1. **Address P1 Findings**: CRITICAL - must be fixed before merge
-
-   - Review each P1 todo in detail
-   - Implement fixes or request exemption
-   - Verify fixes before merging PR
-
-2. **Triage All Todos**:
-   ```bash
-   ls todos/*-pending-*.md  # View all pending todos
-   /triage                  # Use slash command for interactive triage
-   ```
-
-3. **Work on Approved Todos**:
-
-   ```bash
-   /resolve-todo-parallel  # Fix all approved items efficiently
-   ```
-
-4. **Track Progress**:
-   - Rename file when status changes: pending → ready → complete
-   - Update Work Log as you work
-   - Commit todos: `git add todos/ && git commit -m "refactor: add code review findings"`
-
-### Severity Breakdown:
-
-**🔴 P1 (Critical - Blocks Merge):**
-
-- Security vulnerabilities
-- Data corruption risks
-- Breaking changes
-- Critical architectural issues
-
-**🟡 P2 (Important - Should Fix):**
-
-- Performance issues
-- Significant architectural concerns
-- Major code quality problems
-- Reliability issues
-
-**🔵 P3 (Nice-to-Have):**
-
-- Minor improvements
-- Code cleanup
-- Optimization opportunities
-- Documentation updates
+1. Address P1 findings before merge
+2. Run `/triage` for interactive prioritization
+3. Run `/resolve-todo-parallel` to fix approved items
 ````
 
 #### Step 4: Iterative Review
 
-Ask the user: "Want to run another review round to check for issues the fixes may have introduced?" If yes, re-dispatch agents. The user controls when to stop.
+Use **AskUserQuestion** (do NOT proceed without a response):
+
+1. "Run another review round" -- Re-dispatch agents to check for issues the fixes may have introduced
+2. "Done reviewing" -- Proceed to end-to-end testing (if applicable) or finish
+
+Wait for the user's selection before proceeding. If yes, re-dispatch agents. The user controls when to stop.
 
 ### 6. End-to-End Testing (Optional)
 
@@ -555,28 +513,24 @@ Ask the user: "Want to run another review round to check for issues the fixes ma
 
 After presenting the Summary Report, offer appropriate testing based on project type:
 
+Use **AskUserQuestion** based on detected project type (do NOT proceed without a response):
+
 **For Web Projects:**
-```markdown
-**"Want to run browser tests on the affected pages?"**
-1. Yes - run `/test-browser`
-2. No - skip
-```
+
+1. "Yes -- run browser tests" -- Spawn `/test-browser` subagent
+2. "No -- skip testing" -- Finish review
 
 **For iOS Projects:**
-```markdown
-**"Want to run Xcode simulator tests on the app?"**
-1. Yes - run `/xcode-test`
-2. No - skip
-```
+
+1. "Yes -- run Xcode tests" -- Spawn `/xcode-test` subagent
+2. "No -- skip testing" -- Finish review
 
 **For Hybrid Projects (e.g., Rails + Hotwire Native):**
-```markdown
-**"Want to run end-to-end tests?"**
-1. Web only - run `/test-browser`
-2. iOS only - run `/xcode-test`
-3. Both - run both commands
-4. No - skip
-```
+
+1. "Web only" -- Run `/test-browser`
+2. "iOS only" -- Run `/xcode-test`
+3. "Both" -- Run both
+4. "No -- skip" -- Finish review
 
 </offer_testing>
 

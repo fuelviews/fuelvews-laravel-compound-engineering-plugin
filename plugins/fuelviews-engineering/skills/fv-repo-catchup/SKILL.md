@@ -39,29 +39,18 @@ Look for `.gitnexus/` in the project root.
   ```bash
   gitnexus analyze
   ```
-- **If `.gitnexus/` does not exist but `gitnexus` is installed** (check `which gitnexus`): Ask the user:
-  ```
-  GitNexus is installed but this repo has not been indexed.
-  Indexing enables deep dependency analysis for repo catch-up.
-
-  1. Index now (recommended, takes 1-5 minutes)
-  2. Skip -- use file-based scanning only
-  ```
+- **If `.gitnexus/` does not exist but `gitnexus` is installed** (check `which gitnexus`): Use **AskUserQuestion** (do NOT proceed without a response):
+  1. "Index now (recommended)" -- Enables deep dependency analysis, takes 1-5 minutes
+  2. "Skip" -- Use file-based scanning only
   If the user chooses to index, run:
   ```bash
   gitnexus analyze
   gitnexus analyze --skills
   ```
   Then add `.gitnexus/` to `.gitignore` if not already present.
-- **If GitNexus is not installed** (neither `which gitnexus` nor `npx gitnexus --version` succeeds): Ask the user:
-  ```
-  GitNexus is not installed. It provides graph-powered code intelligence
-  that significantly improves repo catch-up accuracy (dependency tracing,
-  execution flows, functional clusters, architecture docs).
-
-  1. Install and index now (recommended)
-  2. Skip -- use file-based scanning only
-  ```
+- **If GitNexus is not installed** (neither `which gitnexus` nor `npx gitnexus --version` succeeds): Use **AskUserQuestion** (do NOT proceed without a response):
+  1. "Install and index now (recommended)" -- Graph-powered code intelligence for dependency tracing, execution flows, architecture docs
+  2. "Skip" -- Use file-based scanning only
   If the user chooses to install, run:
   ```bash
   npm install -g gitnexus
@@ -400,8 +389,10 @@ Ask the user before modifying files outside of `docs/plans/`. Present the propos
 
 For plans classified as `superseded` or `abandoned`:
 
-1. Check if `docs/plans/archive/` exists. If not, ask the user: "Found N superseded/abandoned plans. Create `docs/plans/archive/` and move them there? (y/n)"
-2. If the user approves, move the files and update the plan index.
+1. Check if `docs/plans/archive/` exists. If not, use **AskUserQuestion** (do NOT proceed without a response):
+   - "Archive N plans" -- Create `docs/plans/archive/` and move superseded/abandoned plans there
+   - "Leave in place" -- Keep files where they are, update index entries with classified status
+2. If the user approves archiving, move the files and update the plan index.
 3. If the user declines, leave files in place but update their index entries with the classified status.
 
 For plans classified as `needs_human_confirmation`:
@@ -477,37 +468,40 @@ Process all Tier 2 plans in a single pass (no individual tasks):
 
 After ALL plans (both tiers) are processed, update `docs/plans/_index.md` with new completion percentages.
 
-Print batch summary:
+Present batch summary as formatted markdown:
 
-```
-=== Batch Plan Sync Complete ===
+```markdown
+## Batch Plan Sync Complete
 
-Tier 1 (full sync):
+### Tier 1 (Full Sync)
+
 | # | Plan | Status | Completion | Drift |
-|---|------|--------|-----------|-------|
+|---|------|--------|------------|-------|
 | 1 | <title> | locked | 0% -> 0% | none |
 | 2 | <title> | implementing | 30% -> 45% | 2 unplanned |
-| 2 | <title> | active | 80% -> 85% | 1 unplanned |
 
-Tier 2 (lightweight):
-  M plans synced, completion percentages updated
+### Tier 2 (Lightweight)
 
-Total: N full synced, M lightweight, K skipped
+<M> plans synced, completion percentages updated.
+
+### Totals
+
+| Category | Count |
+|----------|-------|
+| Full synced | <N> |
+| Lightweight | <M> |
+| Skipped | <K> |
 ```
 
 **Step 5: Select active task.**
 
-Ask the user (using the blocking question tool):
+Use **AskUserQuestion** to present the qualifying plans (do NOT proceed without a response):
 
-```
-Which plan should be the active task?
-
-1. <title> (locked, 0%)
-2. <title> (implementing, 45%)
-3. <title> (synced, 100%)
-4. Keep current active task
-5. Clear active task
-```
+Options (dynamically generated from synced plans):
+1. "<title> (locked, 0%)"
+2. "<title> (implementing, 45%)"
+3. "Keep current active task"
+4. "Clear active task"
 
 Update `docs/ai/current-work.md` based on the choice.
 
@@ -630,49 +624,60 @@ Update `Last verified: YYYY-MM-DD` in all docs/ai/ files that were created or mo
 
 ## Phase 6: Output Summary
 
-Print a structured summary to the terminal:
+Present a formatted markdown summary:
 
-```
-=== Repo Catch-Up Complete ===
+```markdown
+## Repo Catch-Up Complete
 
-Project:    <project name from composer.json or directory name>
-Type:       <Laravel X.x | PHP | Unknown>
-GitNexus:   <indexed (N symbols) | not available>
-Packages:   <count detected> (<key packages listed>)
-Patterns:   <detected patterns: Actions, Services, Repositories, etc.>
+### Project
 
-Docs Created:
-  - <file path>
+| Field | Value |
+|-------|-------|
+| Project | <name from composer.json or directory> |
+| Type | <Laravel X.Y / PHP / Unknown> |
+| GitNexus | <indexed (N symbols) / not available> |
+| Packages | <count> (<key packages>) |
+| Patterns | <Actions, Services, Repositories, etc.> |
 
-Docs Refreshed:
-  - <file path> (N claims verified, M corrected)
+### Documentation
 
-Plans Classified:
-  | Status     | Count |
-  |------------|-------|
-  | active     | N     |
-  | complete   | N     |
-  | superseded | N     |
-  | abandoned  | N     |
-  | draft      | N     |
-  | uncertain  | N     |
+| Action | File | Details |
+|--------|------|---------|
+| Created | `docs/ai/architecture.md` | Scaffolded from template |
+| Refreshed | `docs/ai/repo-map.md` | N claims verified, M corrected |
 
-Risks Found:
-  HIGH:   N
-  MEDIUM: N
-  LOW:    N
-  - <top 3 risks listed>
+### Plans Classified
 
-Tool Recommendations:
-  - <suggestion or "All recommended tools detected">
+| Status | Count |
+|--------|-------|
+| active | <N> |
+| complete | <N> |
+| superseded | <N> |
+| abandoned | <N> |
+| draft | <N> |
+| uncertain | <N> |
 
-Verification:
-  Claims checked: N
-  Mismatches found: M
-  Auto-corrected: K
+### Risks Found
 
-Suggested Next:
-  <see recommendation logic below>
+| Severity | Count | Top Issues |
+|----------|-------|------------|
+| HIGH | <N> | <brief descriptions> |
+| MEDIUM | <N> | |
+| LOW | <N> | |
+
+### Verification
+
+| Metric | Count |
+|--------|-------|
+| Claims checked | <N> |
+| Mismatches found | <N> |
+| Auto-corrected | <N> |
+
+### Tool Recommendations
+- <suggestion or "All recommended tools detected">
+
+### Recommended Next
+<see recommendation logic below>
 ```
 
 ### Recommendation Logic
@@ -700,6 +705,7 @@ Suggested Next:
 ### CE Agents
 
 - `compound-engineering:research:repo-research-analyst` -- deep scan of repo structure when Phase 1f complexity threshold is met. Not dispatched by default.
+  **Return contract:** Return ONLY: directory structure summary, non-standard patterns found, entry points, key architectural decisions. No full file contents or verbose listings.
 
 ### FV Agents
 

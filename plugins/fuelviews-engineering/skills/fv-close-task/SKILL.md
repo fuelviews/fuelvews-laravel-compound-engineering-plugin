@@ -101,16 +101,16 @@ Action: Run /fv:plan-sync to update handoff, or manually update docs/handoffs/la
 
 ### Gate Summary
 
-After evaluating all gates, present a summary table:
+After evaluating all gates, present as formatted markdown:
 
-```
-=== Close-Task Gates ===
+```markdown
+## Close-Task Gates
 
-| Gate                    | Result |
-|-------------------------|--------|
-| Plan status == synced   | PASS / FAIL |
-| No unresolved P1s       | PASS / FAIL |
-| Handoff is current      | PASS / FAIL |
+| Gate | Result |
+|------|--------|
+| Plan status == synced | PASS / FAIL |
+| No unresolved P1s | PASS / FAIL |
+| Handoff is current | PASS / FAIL |
 ```
 
 If ANY gate shows FAIL, list all failures with their remediation actions and STOP. Do not proceed to Step 3.
@@ -262,43 +262,49 @@ If not in a worktree, skip this step silently.
 
 ## Step 8: Output Closure Report
 
-Print a structured closure report to the terminal:
+Present the closure report as formatted markdown:
 
-```
-=== Task Closed ===
+```markdown
+## Task Closed
 
-Plan:       <plan path>
-Slug:       <slug>
-Status:     closed
-Closed:     YYYY-MM-DD
+| Field | Value |
+|-------|-------|
+| Plan | `<plan path>` |
+| Slug | `<slug>` |
+| Status | closed |
+| Closed | YYYY-MM-DD |
 
-Gates:
-  Plan synced:       PASS
-  No unresolved P1s: PASS
-  Handoff current:   PASS
+### Gates
 
-Accomplished:
-  - <accomplishment from plan>
-  - <accomplishment from plan>
+| Gate | Result |
+|------|--------|
+| Plan synced | PASS |
+| No unresolved P1s | PASS |
+| Handoff current | PASS |
 
-Commits: N
-  <hash> <message>
-  <hash> <message>
+### Accomplished
+- <accomplishment from plan>
 
-Files Changed: N
-  <grouped file list>
+### Commits (<N>)
 
-Incomplete Steps: N
-  - <step description>
+| Hash | Message |
+|------|---------|
+| `<hash>` | <message> |
 
-Warnings:
-  <list of warnings from Step 3, or "None">
+### Files Changed (<N>)
+<grouped file list>
 
-Follow-Up:
-  - <deferred item or next task>
+### Incomplete Steps (<N>)
+- <step description>
 
-Suggested Next:
-  <see recommendation logic below>
+### Warnings
+<list or "None">
+
+### Follow-Up
+- <deferred item or next task>
+
+### Recommended Next
+<see recommendation logic below>
 ```
 
 ### Recommendation Logic
@@ -311,11 +317,51 @@ Suggested Next:
 
 ---
 
+## Step 9: Compound Learnings
+
+The task is complete — this is the best moment to capture institutional knowledge while the context is fresh.
+
+### 9a: Detect Compoundable Insights
+
+Review the full task lifecycle for learnings worth documenting:
+
+- **Resolved P1/P2 findings** from the plan's Review Deltas — what was discovered and how it was resolved
+- **Drift detected during plan-sync** — what the plan got wrong and why
+- **Blind spots that materialized** — impact assessment gaps that became real issues
+- **Infrastructure discovered during implementation** — existing services/models/patterns that weren't in the plan but should have been
+- **Workarounds or gotchas** — framework bugs, undocumented behavior, version-specific issues hit during `/fv:work`
+- **Approach changes** — if the implementation diverged significantly from the plan, why?
+- **Deferred items with useful context** — items deferred during review that future plans should know about
+
+If NONE of these signals are present (clean task, plan matched reality), skip compounding silently and proceed to the recommendation.
+
+### 9b: Offer Compounding
+
+If signals are present, use **AskUserQuestion** (do NOT proceed without a response):
+
+1. "Compound learnings now" -- Capture insights into `docs/solutions/` for future plans to learn from
+2. "Skip" -- Nothing worth documenting this time
+
+### 9c: Run Compounding (if accepted)
+
+Load the `ce:compound` skill (or `compound-docs` skill) from compound-engineering. Pass:
+
+- The plan artifact path and closure summary
+- The specific signals detected in 9a (resolved findings, drift, blind spots, workarounds)
+- The task's Review Deltas section (contains the full finding-resolution history)
+
+The compounding skill writes a categorized solution document to `docs/solutions/` with YAML frontmatter (tags, category, module, symptom, root_cause) so future `learnings-researcher` runs in `/fv:plan` Phase 1.1 can find it.
+
+**Return contract:** The compounding skill writes to disk directly. Confirm the file path to the user.
+
+---
+
 ## Agent Dispatch
 
 ### CE Agents
 
 - `compound-engineering:research:repo-research-analyst` -- verify implementation state for gate checks when the diff is large and manual verification would be error-prone
+  **Return contract:** Return ONLY: gate-relevant findings (file change classification, P1 resolution status). No full file contents.
 
 ### FV Agents
 

@@ -31,8 +31,10 @@ This command takes a work document (plan, specification, or todo file) and execu
    - Review any references or links provided in the plan
    - If the user explicitly asks for TDD, test-first, or characterization-first execution in this session, honor that request even if the plan has no `Execution note`
    - If the plan has an `impact_artifact:` frontmatter field, read the impact artifact from `docs/impact/`. Extract the definite edit set, watchlist, and blind spots for drift monitoring during execution.
-   - If anything is unclear or ambiguous, ask clarifying questions now
-   - Get user approval to proceed
+   - If anything is unclear or ambiguous, use **AskUserQuestion** to ask clarifying questions now
+   - Use **AskUserQuestion** to get user approval to proceed (do NOT start implementation without a response):
+     1. "Looks good -- start implementation" -- Proceed to Setup Environment
+     2. "I have questions/changes" -- User clarifies, then re-present
    - **Do not skip this** - better to ask questions now than build the wrong thing
 
 2. **Setup Environment**
@@ -50,11 +52,11 @@ This command takes a work document (plan, specification, or todo file) and execu
    ```
 
    **If already on a feature branch** (not the default branch):
-   - Ask: "Continue working on `[current_branch]`, or create a new branch?"
-   - If continuing, proceed to step 3
-   - If creating new, follow Option A or B below
+   Use **AskUserQuestion** (do NOT proceed without a response):
+   1. "Continue on `[current_branch]`" -- Proceed to step 3
+   2. "Create a new branch" -- Follow Option A or B below
 
-   **If on the default branch**, choose how to proceed:
+   **If on the default branch**, use **AskUserQuestion** to choose how to proceed:
 
    **Option A: Create a new branch**
    ```bash
@@ -120,6 +122,32 @@ This command takes a work document (plan, specification, or todo file) and execu
    while (tasks remain):
      - Mark task as in-progress
      - Read any referenced files from the plan
+     - Before creating any new artifact, search for existing infrastructure that handles
+       the same or related concern. Use these tools in priority order:
+       (1) GitNexus `gitnexus_query`/`gitnexus_context` if `.gitnexus/` exists
+       (2) `ast-grep` for structural matches (e.g., `ast-grep -p 'class $N extends Model'`)
+       (3) Native Glob/Grep for path and text search
+       Also check `composer.json`/`package.json` for packages. Apply these rules:
+       * Models: NEVER create if entity exists — add relationships/scopes/casts instead
+       * Enums: add cases to existing, don't create parallel ones
+       * Config: add keys to existing files, don't create new config files
+       * Components: compose/extend existing Blade/Livewire via slots/props
+       * Middleware: use existing stacks, don't add inline request checks
+       * Policies: add gates to existing policies, don't scatter auth in controllers
+       * Events: attach listeners to existing events, don't bypass event system
+       * Form Requests: reuse shared validation rules/traits
+       * Jobs: reuse existing queue infra, retry configs, unique locks
+       * Notifications/Mailables: extend existing channels and base classes
+       * Services/Actions/Traits: extend or compose, don't duplicate
+       * Casts: reuse existing custom casts
+       * Factories: update existing factories with new fields/states
+       * Routes: add to existing groups/middleware stacks
+       * Commands: add options to existing Artisan commands, don't create parallel ones
+       * Blade views: extend existing layouts, include existing partials, use component slots
+       * JS/TS components: reuse existing shared components, hooks, utils, API wrappers
+       * TypeScript types: extend existing types/interfaces, don't create overlapping ones
+       * Packages: check if installed composer/npm package already handles it
+       Only create new artifacts when existing infrastructure genuinely doesn't fit.
      - Look for similar patterns in codebase
      - Implement following existing conventions
      - Write tests for new functionality
@@ -241,7 +269,9 @@ This command takes a work document (plan, specification, or todo file) and execu
 
 2. **Consider Reviewer Agents** (Optional)
 
-   **Reference loading:** Before dispatching any review agent, read `references/spatie-laravel.md`, `references/laravel-best-practices.md`, and `docs/ai/conventions.md` (if exists). Pass the content to each fv review agent alongside the changed files and version context (from Boost `application-info` or `composer.json`).
+   **Reference loading:** Do NOT read reference files into the orchestrator. Instruct each fv review agent to read `references/spatie-laravel.md`, `references/laravel-best-practices.md`, and `docs/ai/conventions.md` itself. Pass version context (from Boost `application-info` or `composer.json`) only.
+
+   **Return contract for all review agents:** "Return ONLY a structured findings list. Each finding: severity (P1/P2/P3), file:line, one-line summary, effort. No detailed reasoning or code examples."
 
    For Laravel projects, always run these fv review agents:
    - `fuelviews-engineering:review:php-reviewer`
@@ -261,7 +291,7 @@ This command takes a work document (plan, specification, or todo file) and execu
 
    Use for complex, risky, or large changes. Read agents from `fuelviews-engineering.local.md` frontmatter (`review_agents`). If no settings file, invoke the `setup` skill to create one.
 
-   Run configured agents in parallel with Task tool. Present findings and address critical issues.
+   Run configured agents in parallel with Task tool. Present structured findings and address critical issues.
 
 3. **Final Validation**
    - All tasks marked completed

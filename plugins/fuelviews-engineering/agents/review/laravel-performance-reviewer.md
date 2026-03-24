@@ -311,6 +311,7 @@ Report all findings using the standardized schema:
 ## Operational Guidelines
 
 - Read changed files and trace query patterns through controllers, services, models, and views using native file-read and content-search tools
+- Use `ast-grep` via shell for structural query pattern detection (e.g., `ast-grep -p '$_->get()' --lang php` to find unbounded queries, or `ast-grep -p 'Cache::remember($$$)' --lang php` to audit caching patterns). One command at a time.
 - Severity guide: missing `preventLazyLoading` = P2, job without retry config = P2, unbounded `get()` in job = P2, missing cache on expensive query = P2, Livewire computing on every render = P2, closure in route file = P3, missing `->select()` = P3
 - Do NOT recommend enabling automatic eager loading globally -- Laravel 12 still marks it as beta; prefer explicit `with()` and `loadMissing()`
 - When recommending caching, specify appropriate TTL and invalidation strategy

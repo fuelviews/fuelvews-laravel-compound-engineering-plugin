@@ -422,29 +422,42 @@ Note "Boost: available" for the session brief.
 
 ## Step 8: Output Session Brief
 
-Present a structured summary of everything detected. Use this exact format:
+Present a structured summary of everything detected as formatted markdown:
 
-```
-=== Fuelviews Engineering Session ===
+```markdown
+## Fuelviews Engineering Session
 
-Environment:
-  Branch:    <current branch>
-  Repo Type: <Laravel|PHP|Unknown> (<framework version if detected>)
-  CE:        <available (vX.Y.Z) | not detected>
-  GitNexus:  <available|installed (this session)|declined|skipped>
-  Boost:     <available|not installed|N/A (not Laravel)>
+### Environment
 
-Active Task:
-  <task summary from Step 4, or "None detected">
+| Field | Value |
+|-------|-------|
+| Branch | `<current branch>` |
+| Repo Type | <Laravel X.Y / PHP / Unknown> |
+| CE | <available vX.Y.Z / not detected> |
+| GitNexus | <available (N symbols) / installed / declined / skipped> |
+| Boost | <available / not installed / N/A> |
 
-Warnings:
-  <list of warnings from Steps 3, 4, 5, or "None">
+### Active Task
 
-Blockers:
-  <list of blocking issues from Step 5, or "None">
+<task summary from Step 4, or "None detected">
 
-Recommended Next:
-  <see recommendation logic below>
+### Warnings
+
+| Source | Warning |
+|--------|---------|
+| <step> | <warning text> |
+
+### Blockers
+
+| Source | Blocker |
+|--------|---------|
+| <step> | <blocker text> |
+
+*If no warnings or blockers, show "None"*
+
+### Recommended Next
+
+<see recommendation logic below>
 ```
 
 ### Recommendation Logic
@@ -467,6 +480,7 @@ Determine the recommended next command based on session state:
 ### CE Agents
 
 - `compound-engineering:research:repo-research-analyst` -- use for deep repo structure scanning if initial file reads reveal an unusually complex or unfamiliar project layout. Not dispatched by default; dispatch only when Step 2 loading reveals insufficient context to assess repo health.
+  **Return contract:** Return ONLY: directory structure summary, non-standard patterns found, entry points. No full file contents.
 
 ### FV Agents
 

@@ -138,35 +138,51 @@ Process all Tier 2 plans in a single pass -- no individual tasks needed:
 
 After ALL plans (both tiers) are processed, update `docs/plans/_index.md` with new completion percentages.
 
-Print batch summary:
+Present batch summary as formatted markdown:
 
-```
-=== Batch Plan Sync Complete ===
+```markdown
+## Batch Plan Sync Complete
 
-Tier 1 (full sync):
+### Tier 1 (Full Sync)
+
 | # | Plan | Status | Completion | Drift |
-|---|------|--------|-----------|-------|
+|---|------|--------|------------|-------|
 | 1 | <title> | locked | 0% -> 0% | none |
 | 2 | <title> | active | 30% -> 45% | 2 unplanned |
 
-Tier 2 (lightweight):
-  M plans synced, completion percentages updated
+### Tier 2 (Lightweight)
 
-Total: N full synced, M lightweight synced, K skipped
+<M> plans synced, completion percentages updated.
+
+### Totals
+
+| Category | Count |
+|----------|-------|
+| Full synced | <N> |
+| Lightweight | <M> |
+| Skipped | <K> |
 ```
+
+### 1B.5b: Batch Compound Check
+
+After the batch summary, check if any Tier 1 plans had resolved P1/P2 findings, significant drift, or materialized blind spots. If any did, offer compounding once for the batch (not per-plan):
+
+Use **AskUserQuestion** (do NOT proceed without a response):
+
+1. "Compound learnings from this batch" -- Capture insights from plans with resolved findings or significant drift
+2. "Skip" -- No learnings worth documenting
+
+If accepted, load the `ce:compound` skill and pass the plans with signals. One solution document per distinct learning, not per plan.
 
 ### 1B.6: Select Active Task
 
-Ask the user (using the blocking question tool):
+Use **AskUserQuestion** to present qualifying plans (do NOT proceed without a response):
 
-```
-Which plan should be the active task?
-
-1. <title> (locked, 0%)
-2. <title> (implementing, 45%)
-3. Keep current active task
-4. Clear active task
-```
+Options (dynamically generated from synced plans):
+1. "<title> (locked, 0%)"
+2. "<title> (implementing, 45%)"
+3. "Keep current active task"
+4. "Clear active task"
 
 Update `docs/ai/current-work.md` based on the user's choice.
 
@@ -302,38 +318,37 @@ If the handoff file does not exist, create it from the template at `templates/ha
 
 ## Step 6: Output Summary
 
-Print a structured summary to the terminal:
+Present the sync results as formatted markdown:
 
-```
-=== Plan Sync Complete ===
+```markdown
+## Plan Sync Complete
 
-Plan:       <plan path>
-Slug:       <slug>
-Status:     synced
-Base:       <base ref>
+| Field | Value |
+|-------|-------|
+| Plan | `<plan path>` |
+| Slug | `<slug>` |
+| Status | synced |
+| Base | `<base ref>` |
+| Progress | N/M steps (XX%) |
 
-Progress:   N/M steps complete (XX%)
+### Completed Steps
+- <step description>
 
-Completed Steps:
-  - <step description>
+### Incomplete Steps
+- <step description>
 
-Incomplete Steps:
-  - <step description>
+### Drift
 
-Drift Detected:
-  Unplanned changes: N files
-    - <file path> (reason from commit if available)
-  Missing expected:  N files
-    - <file path>
+| Type | Count | Details |
+|------|-------|---------|
+| Unplanned changes | <N> | `<file>` -- <reason from commit> |
+| Missing expected | <N> | `<file>` |
 
-Artifacts Updated:
-  - <plan path>
-  - docs/plans/_index.md
-  - docs/ai/current-work.md
-  - docs/handoffs/latest.md
-
-Suggested Next:
-  <see recommendation logic below>
+### Artifacts Updated
+- `<plan path>`
+- `docs/plans/_index.md`
+- `docs/ai/current-work.md`
+- `docs/handoffs/latest.md`
 ```
 
 ### Recommendation Logic
@@ -347,11 +362,49 @@ Suggested Next:
 
 ---
 
+## Step 7: Compound Learnings (conditional)
+
+After presenting the sync summary, check whether this task produced knowledge worth capturing in `docs/solutions/`.
+
+### 7a: Detect Compoundable Insights
+
+Check the sync results for any of these signals:
+
+- **Resolved P1/P2 findings** -- the plan's Review Deltas show findings that were discovered and resolved during the convergent loop. The resolution approach is institutional knowledge.
+- **Drift that required unexpected changes** -- unplanned files were modified, indicating the plan's scope was wrong. Why it was wrong is a learning.
+- **Blind spots that materialized** -- the impact assessment's blind spots turned into real issues. How they were caught/fixed is a learning.
+- **Infrastructure discovered during implementation** -- existing services/models/patterns found during `/fv:work` that should have been in the plan. Future plans should know about them.
+- **Workarounds or gotchas** -- implementation hit framework bugs, undocumented behavior, or version-specific issues.
+
+If NONE of these signals are present (clean sync, no surprises), skip compounding silently.
+
+### 7b: Offer Compounding
+
+If signals are present, use **AskUserQuestion** (do NOT proceed without a response):
+
+1. "Compound learnings now" -- Capture insights into `docs/solutions/`
+2. "Skip" -- No learnings worth documenting this time
+
+### 7c: Run Compounding (if accepted)
+
+Load the `ce:compound` skill (or `compound-docs` skill) from compound-engineering. Pass:
+
+- The plan artifact path
+- The sync summary (drift, resolved findings, blind spots)
+- The specific signals detected in 7a
+
+The compounding skill will create a categorized solution document in `docs/solutions/` with YAML frontmatter (tags, category, module, symptom, root_cause) so future `learnings-researcher` runs can find it.
+
+**Return contract:** The compounding skill writes to disk directly. No output needed in the orchestrator beyond confirming the file path.
+
+---
+
 ## Agent Dispatch
 
 ### CE Agents
 
 - `compound-engineering:research:repo-research-analyst` -- scan recent commits and file changes for drift detection when the diff is large (>20 files changed) and manual classification would be error-prone
+  **Return contract:** Return ONLY: classified drift items (planned vs unplanned), file-to-plan-step mapping, and anomalies. No full file contents.
 
 ### FV Agents
 

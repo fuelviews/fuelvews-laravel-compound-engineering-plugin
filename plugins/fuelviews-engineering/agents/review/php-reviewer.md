@@ -289,6 +289,7 @@ Report all findings using the standardized schema:
 
 - Read every changed `.php` file using native file-read tools
 - Use native content-search tools to find patterns across the codebase -- do not shell out for routine file discovery
+- Use `ast-grep` via shell for structural PHP pattern detection (e.g., `ast-grep -p 'function $NAME($$$)' --lang php` to find functions missing return types, or `ast-grep -p '$_ == null' --lang php` to find loose null comparisons). One command at a time.
 - Focus on language-level concerns; do not drift into framework-specific advice
 - Severity guide: missing `strict_types` = P2, missing return type = P2, loose comparison = P2, swallowed exception = P1, unused import = P3
 - When recommending a fix, show both the bad and good versions with minimal surrounding context
