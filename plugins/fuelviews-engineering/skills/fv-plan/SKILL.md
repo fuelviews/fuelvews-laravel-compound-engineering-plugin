@@ -659,22 +659,41 @@ Wait for the user's response.
 
 Update plan frontmatter: `pipeline_phase: 3`.
 
-### 3.0 Framework Version Resolution
+### 3.0 Framework Version Resolution and Reference Loading
 
 Determine framework versions via Boost `mcp__laravel-boost__application-info` or by parsing `composer.json`/`package.json`. Construct version context string: "Review context: Laravel X.Y, PHP X.Y, Filament X.Y, Livewire X.Y, Tailwind X.Y" (only present frameworks). Pass to every review agent.
+
+**Reference loading:** Before dispatching agents, read and prepare the following reference materials. Pass the content (not just file paths) to each agent alongside the plan artifact and version context:
+
+1. `references/spatie-laravel.md` -- Spatie Laravel guidelines (naming, routing, controllers, config, authorization)
+2. `references/laravel-best-practices.md` -- alexeymezenin best practices (SRP, fat models, DRY, Eloquent, validation, IoC)
+3. `docs/ai/conventions.md` -- repo-specific conventions (if exists, loaded in Phase 0.4)
+
+If Boost MCP is available, also fetch relevant docs via `mcp__laravel-boost__search-docs` for topics the plan touches (e.g., "eloquent scopes", "form requests", "policies").
 
 ### 3.1 Dispatch Review Panel
 
 <thinking>
-The review panel combines CE's architecture and security reviewers with fv's Laravel-specific reviewer. Broad coverage, focused enough to converge quickly.
+The review panel combines CE's architecture and security reviewers with fv's full Laravel review suite. Every fv reviewer receives the reference materials and version context so they can verify findings against current framework docs.
 </thinking>
 
 Launch in parallel:
 
-- Task `fuelviews-engineering:review:laravel-reviewer` with: plan artifact, affected files, version context
+**fv Laravel reviewers (always):**
+- Task `fuelviews-engineering:review:laravel-reviewer` with: plan artifact, affected files, references, version context
+- Task `fuelviews-engineering:review:laravel-conventions-reviewer` with: plan artifact, affected files, references, version context
+- Task `fuelviews-engineering:review:laravel-performance-reviewer` with: plan artifact, affected files, references, version context
+- Task `fuelviews-engineering:review:laravel-codebase-health-reviewer` with: plan artifact, affected files, references, version context
+
+**CE reviewers (always):**
 - Task `compound-engineering:review:architecture-strategist` with: plan artifact, impact artifact, version context
 - Task `compound-engineering:review:security-sentinel` with: plan artifact, security-sensitive paths, version context
 - Task `compound-engineering:review:code-simplicity-reviewer` with: plan artifact, implementation steps, version context
+- Task `compound-engineering:review:pattern-recognition-specialist` with: plan artifact, affected files, version context
+
+**CE reviewers (conditional):**
+- Task `compound-engineering:review:performance-oracle` with: plan artifact, version context -- run when plan involves query-heavy features, API endpoints, or large dataset processing
+- Task `compound-engineering:review:data-integrity-guardian` with: plan artifact, version context -- run when plan involves migrations, schema changes, data transformations, or transaction boundaries
 
 Each agent returns: finding ID, severity (P1/P2/P3), confidence, affected files, evidence summary.
 

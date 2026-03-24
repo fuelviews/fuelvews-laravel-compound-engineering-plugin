@@ -241,7 +241,23 @@ This command takes a work document (plan, specification, or todo file) and execu
 
 2. **Consider Reviewer Agents** (Optional)
 
-   For Laravel projects, always run these fv review agents: `fuelviews-engineering:review:php-reviewer`, `fuelviews-engineering:review:laravel-reviewer`. Conditionally add: `fuelviews-engineering:review:blade-reviewer` (if Blade files changed), `fuelviews-engineering:review:postgresql-reviewer` (if migrations/queries changed), `fuelviews-engineering:review:javascript-reviewer` (if JS/Livewire changed).
+   **Reference loading:** Before dispatching any review agent, read `references/spatie-laravel.md`, `references/laravel-best-practices.md`, and `docs/ai/conventions.md` (if exists). Pass the content to each fv review agent alongside the changed files and version context (from Boost `application-info` or `composer.json`).
+
+   For Laravel projects, always run these fv review agents:
+   - `fuelviews-engineering:review:php-reviewer`
+   - `fuelviews-engineering:review:laravel-reviewer`
+   - `fuelviews-engineering:review:laravel-conventions-reviewer`
+   - `fuelviews-engineering:review:laravel-performance-reviewer`
+
+   Conditionally add:
+   - `fuelviews-engineering:review:blade-reviewer` (if Blade files changed)
+   - `fuelviews-engineering:review:postgresql-reviewer` (if migrations/queries changed)
+   - `fuelviews-engineering:review:javascript-reviewer` (if JS/Livewire changed)
+   - `fuelviews-engineering:review:laravel-codebase-health-reviewer` (if files were deleted or features removed)
+   - `compound-engineering:review:performance-oracle` (if query-heavy features or API endpoints changed)
+   - `compound-engineering:review:data-integrity-guardian` (if migrations or data transformations changed)
+   - `compound-engineering:review:security-sentinel` (if auth, policies, or user input handling changed)
+   - `compound-engineering:review:pattern-recognition-specialist` (if new service classes or architectural patterns introduced)
 
    Use for complex, risky, or large changes. Read agents from `fuelviews-engineering.local.md` frontmatter (`review_agents`). If no settings file, invoke the `setup` skill to create one.
 

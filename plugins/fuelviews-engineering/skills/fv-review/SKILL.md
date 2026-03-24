@@ -74,17 +74,19 @@ Read `fuelviews-engineering.local.md` in the project root. If found, use `review
 
 If no settings file exists, use the fv default review panel:
 
-**Mandatory:**
+**Mandatory (fv Laravel):**
 - `fuelviews-engineering:review:laravel-reviewer`
 - `fuelviews-engineering:review:php-reviewer`
 - `fuelviews-engineering:review:blade-reviewer`
-
-**Standard:**
 - `fuelviews-engineering:review:laravel-conventions-reviewer`
 - `fuelviews-engineering:review:laravel-performance-reviewer`
+
+**Standard (CE):**
 - `compound-engineering:review:code-simplicity-reviewer`
 - `compound-engineering:review:security-sentinel`
 - `compound-engineering:review:pattern-recognition-specialist`
+- `compound-engineering:review:architecture-strategist`
+- `compound-engineering:review:performance-oracle`
 
 #### Choose Execution Mode
 
@@ -108,6 +110,16 @@ Run all agents simultaneously for speed. If you hit context limits, retry with `
 #### Framework Version Resolution
 
 Before dispatching agents, determine framework versions via Boost `application-info` MCP tool or by reading `composer.json`. Pass version context (Laravel, PHP, Livewire, FilamentPHP versions) to all agents so they can tailor advice to the correct API surface.
+
+#### Reference Loading
+
+Read and pass the following reference content (not just file paths) to each fv review agent alongside the PR content and version context:
+
+1. `references/spatie-laravel.md` -- Spatie Laravel guidelines (naming, routing, controllers, config, authorization)
+2. `references/laravel-best-practices.md` -- alexeymezenin best practices (SRP, fat models, DRY, Eloquent, validation, IoC)
+3. `docs/ai/conventions.md` -- repo-specific conventions (if exists in the target project)
+
+If Boost MCP is available, also fetch relevant docs via `mcp__laravel-boost__search-docs` for topics the PR touches.
 
 #### GitNexus Pre-Dispatch
 
@@ -153,8 +165,10 @@ These agents are run ONLY when the PR matches specific criteria. Check the PR fi
 
 - Task compound-engineering:review:schema-drift-detector(PR content) - Detects unrelated schema changes by cross-referencing against included migrations (run FIRST)
 - Task compound-engineering:review:data-migration-expert(PR content) - Validates ID mappings match production, checks for swapped values, verifies rollback safety
+- Task compound-engineering:review:data-integrity-guardian(PR content) - Reviews migration safety, data constraints, transaction boundaries, and privacy compliance
 - Task compound-engineering:review:deployment-verification-agent(PR content) - Creates Go/No-Go deployment checklist with SQL verification queries
 - Task fuelviews-engineering:review:postgresql-reviewer(PR content) - PostgreSQL-specific review for query patterns, index usage, and migration safety
+- Task fuelviews-engineering:review:laravel-codebase-health-reviewer(PR content, references) - Check for orphaned routes, unused methods, and dead code left by the migration
 
 **When to run:**
 - PR includes files matching `database/migrations/*.php`
@@ -165,8 +179,10 @@ These agents are run ONLY when the PR matches specific criteria. Check the PR fi
 **What these agents check:**
 - `schema-drift-detector`: Cross-references schema changes against PR migrations to catch unrelated columns/indexes from local database state
 - `data-migration-expert`: Verifies hard-coded mappings match production reality (prevents swapped IDs), checks for orphaned associations, validates dual-write patterns
+- `data-integrity-guardian`: Reviews data model safety, transaction boundaries, constraint integrity, and privacy compliance
 - `deployment-verification-agent`: Produces executable pre/post-deploy checklists with SQL queries, rollback procedures, and monitoring plans
 - `postgresql-reviewer`: Validates PostgreSQL-specific patterns, index strategies, and migration safety
+- `laravel-codebase-health-reviewer`: Detects orphaned routes, unused methods, dead config, and DRY violations from the migration
 
 **JS/LIVEWIRE: If PR contains JavaScript or Livewire files:**
 
